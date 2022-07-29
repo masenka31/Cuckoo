@@ -1,4 +1,7 @@
 # Folders to ignore
-
 .vscode
 data
+
+# Files to ignore
+Manifest.toml
+plot.png

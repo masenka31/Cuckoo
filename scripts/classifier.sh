@@ -9,4 +9,4 @@ MAX_SEED=$1
 # module load Julia
 module load Julia/1.7.3-linux-x86_64
 
-julia --project --threads 10 ./classifier.jl ${MAX_SEED}
+julia --project --threads 10 ./classifier_seeds.jl ${MAX_SEED}

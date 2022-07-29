@@ -31,7 +31,7 @@ end
 # function to sample parameters
 function sample_params()
     mdim = sample([8,16,32,64])
-    activation = sample(["sigmoid", "tanh", "relu", "swish"])
+    activation = sample(["tanh", "relu", "swish"])
     aggregation = sample(["SegmentedMeanMax", "SegmentedMax", "SegmentedMean"])
     nlayers = sample(1:3)
     return (mdim=mdim, activation=activation, aggregation=aggregation, nlayers=nlayers)
@@ -100,8 +100,8 @@ for seed in 1:max_seed
 
     # save the dataframes to csv
     wsave(datadir("classifier", savename("seed=$seed", parameters), "train.csv"), train_df)
-    wsave(datadir("classifier", savename("seed=$seed", parameters), "val.csv"), train_df)
-    wsave(datadir("classifier", savename("seed=$seed", parameters), "test.csv"), train_df)
+    wsave(datadir("classifier", savename("seed=$seed", parameters), "val.csv"), val_df)
+    wsave(datadir("classifier", savename("seed=$seed", parameters), "test.csv"), test_df)
 
     # save the model with results
     dict = Dict(
