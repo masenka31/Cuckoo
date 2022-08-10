@@ -10,7 +10,6 @@ using Flux: @epochs
 d = Dataset()
 labels = d.family
 const labelnames = sort(unique(labels))
-# data, _ = d[:]
 
 # minibatch function
 function minibatch(d::Dataset, train_ix; batchsize=64)
@@ -68,7 +67,7 @@ for seed in 1:max_seed
 
     # train the model for 10 minutes
     start_time = time()
-    max_train_time = 60#*10 # 10 minutes of training time
+    max_train_time = 60*10 # 10 minutes of training time
     while time() - start_time < max_train_time
         batches = map(_ -> minibatch(d, train_ix), 1:10);
         Flux.train!(loss, Flux.params(full_model), batches, opt)

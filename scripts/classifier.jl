@@ -1,4 +1,5 @@
 using DrWatson
+include(srcdir("paths.jl"))
 include(srcdir("dataset.jl"))
 include(srcdir("data.jl"))
 include(srcdir("constructors.jl"))
@@ -6,16 +7,16 @@ include(srcdir("constructors.jl"))
 using Flux
 using Flux: @epochs
 
+modelname = "hmill_classifier_crossentropy"
+dataset = "cuckoo_small"
+
 # load data
 d = Dataset()
 labels = d.family
 const labelnames = sort(unique(labels))
-# data, _ = d[:]
 
 # split data
-seed = parse(Int, ARGS[1])
-ratios=(0.2,0.4,0.4)
-train_ix, val_ix, test_ix = train_val_test_ix(labels; ratios=ratios, seed=seed)
+train_ix, val_ix, test_ix = load_split_indexes(split_path)
 Xtrain, ytrain = d[train_ix]
 Xval, yval = d[val_ix]
 Xtest, ytest = d[test_ix]
@@ -49,15 +50,8 @@ function sample_params()
 end
 
 # Parameters
-# mdim, activation, aggregation, nlayers = 32, relu, BagCount ∘ SegmentedMeanMax, 3
 parameters = sample_params()
-parameters = merge(parameters, (seed = seed, ))
-
-xtr, _ = minibatch(d, train_ix)
-full_model = classifier_constructor(xtr; parameters..., odim=length(labelnames));
-mill_model = full_model[1];
-
-opt = ADAM()
+# parameters = merge(parameters, (seed = seed, ))
 
 # loss and accuracy
 loss(X, y) = Flux.logitcrossentropy(full_model(X), y)
@@ -65,11 +59,19 @@ accuracy(x::ProductNode, y::Vector{String}) = mean(labelnames[Flux.onecold(full_
 accuracy(x::ProductNode, yoh::Flux.OneHotMatrix) = mean(labelnames[Flux.onecold(full_model(x))] .== Flux.onecold(yoh, labelnames))
 accuracy(y1::Vector{T}, y2::Vector{T}) where T = mean(y1 .== y2)
 
+# initialize the model
+xtr, _ = minibatch(d, train_ix)
+full_model = classifier_constructor(xtr; parameters..., odim=length(labelnames));
+mill_model = full_model[1];
+
+# initialize optimizer
+opt = ADAM()
+
 @info "Model created, starting training..."
 
 # train the model
 start_time = time()
-max_train_time = 60*10 # 10 minutes of training time
+max_train_time = 60*15 # 20 minutes of training time
 while time() - start_time < max_train_time
     batches = map(_ -> minibatch(d, train_ix), 1:10);
     Flux.train!(loss, Flux.params(full_model), batches, opt)
@@ -99,22 +101,11 @@ test_df = DataFrame(
     :ztest => ztest,
 )
 
-# ### one version of saving
-# # save the dataframes to csv
-# wsave(datadir("classifier", savename("train", parameters, "csv"), train_df)
-# wsave(datadir("classifier", savename("val", parameters, "csv"), val_df)
-# wsave(datadir("classifier", savename("test", parameters, "csv"), test_df)
-
-# # save the model
-# dict = Dict(:model => full_model)
-# safesave(datadir("classifier", savename("model", parameters, "bson")), dict)
-
-### another version of saving
-# this one might be easier for evaluation
 # save the dataframes to csv
-wsave(datadir("classifier", savename(parameters), "train.csv"), train_df)
-wsave(datadir("classifier", savename(parameters), "val.csv"), train_df)
-wsave(datadir("classifier", savename(parameters), "test.csv"), train_df)
+# safesave(datadir(modelname, savename(parameters), "train.csv"), train_df)
+safesave(expdir(dataset, modelname, savename(parameters), "train.csv"), train_df)
+safesave(expdir(dataset, modelname, savename(parameters), "val.csv"), val_df)
+safesave(expdir(dataset, modelname, savename(parameters), "test.csv"), test_df)
 
 # save the model with results
 dict = Dict(
@@ -124,5 +115,4 @@ dict = Dict(
     :val_acc => accuracy(encode_labels(yval, labelnames), zval),
     :test_acc => accuracy(encode_labels(ytest, labelnames), ztest)
 )
-wsave(datadir("classifier", savename(parameters), "model.bson"), dict)
-@info "Results saved."
+safesave(expdir(dataset, modelname, savename(parameters), "results.bson"), dict)

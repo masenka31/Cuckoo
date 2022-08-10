@@ -53,7 +53,6 @@ function Dataset()
     )
 end
 
-    
 # this is too slow
 # function Base.getindex(d::Dataset, inds)
 #     files = joinpath.(datapath, "public_small_reports", string.(d.samples[inds], ".json"))
