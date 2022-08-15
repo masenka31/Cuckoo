@@ -6,15 +6,16 @@ using PrettyTables
 include(srcdir("dataset.jl"))
 include(srcdir("data.jl"))
 include(srcdir("constructors.jl"))
+include(srcdir("paths.jl"))
 
 if isempty(ARGS)
-    model = "classifier"
+    model = "hmill_classifier_crossentropy"
 else
     model = ARGS[1]
 end
 
 # load all results, combine and sort by validation accuracy
-df = collect_results(datadir(model), subfolders=true, rexclude=[r"seed=1", r"activation=sigmoid"])
+df = collect_results(expdir("cuckoo_small", model), subfolders=true)#, rexclude=[r"seed=1", r"activation=sigmoid"])
 g = groupby(df, :parameters)
 c = combine(g, [:train_acc, :val_acc, :test_acc] .=> mean, renamecols=false)
 sort!(c, :val_acc, rev=true)
@@ -84,3 +85,35 @@ ls = cutree(hs, k=10);
 randindex(ls, l)
 lw = cutree(hw, k=10);
 randindex(lw, l)
+
+### extraction of features
+# and saving them
+
+# load data
+d = Dataset()
+labels = d.family
+const labelnames = sort(unique(labels))
+
+# split data
+train_ix, val_ix, test_ix = load_split_indexes(split_path)
+Xtrain, ytrain = d[train_ix]
+Xval, yval = d[val_ix]
+Xtest, ytest = d[test_ix]
+
+m = df.model;
+p = df.parameters
+
+using ProgressMeter
+@showprogress for (model, pars) in zip(m, p)
+    enc_train = model[1](Xtrain)
+    enc_val = model[1](Xval)
+    enc_test = model[1](Xtest)
+
+    dtrain = DataFrame(enc_train', :auto)
+    dval = DataFrame(enc_val', :auto)
+    dtest = DataFrame(enc_test', :auto)
+
+    safesave(expdir("cuckoo_small", "hmill_classifier_crossentropy", savename(pars), "train_features.csv"), dtrain)
+    safesave(expdir("cuckoo_small", "hmill_classifier_crossentropy", savename(pars), "val_features.csv"), dval)
+    safesave(expdir("cuckoo_small", "hmill_classifier_crossentropy", savename(pars), "test_features.csv"), dtest)
+end
