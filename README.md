@@ -13,6 +13,8 @@ For experimentation, the dataset is split with 60%/20%/20% ratio for train/valid
 - `split_indexes.csv` contains the same DataFrame with both IDs and indexes (columns `train, train_ix, val, val_ix, test, test_ix`)
 - the same goes for individual `.csv` files for train/validation/test, if needed (these do not need to be padded)
 
+There are also time based splits, two of them to be exact. The first cuts the train data to be all samples seen before 2019-01-01, resulting in 41% of samples being train samples. The second cuts the data at 2019-04-01 resulting in 57% of samples being train. Validation and test splits are randomly sampled from the rest.
+
 ### Results
 
 The results for experiments are stored in folder `experiments`. The structure is as follows
@@ -30,7 +32,17 @@ experiments
 
 ## Label encoding
 
-Labels can be encoded to numerical values. The key is simple: sort unique labels alphabetically and assign numbers from 1 to 10. 
+Labels can be encoded to numerical values. The key is simple: sort unique labels alphabetically and assign numbers from 1 to 10:
+1. Adload
+2. Emotet
+3. HarHar
+4. Lokibot
+5. Qakbot
+6. Swisyn
+7. Trickbot
+8. Ursnif
+9. Zeus
+10. njRAT
 
 ## Models
 
