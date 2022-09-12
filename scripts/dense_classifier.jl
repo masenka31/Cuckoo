@@ -19,6 +19,14 @@ tr_x, tr_l, tr_h, val_x, val_l, val_h, test_x, test_l, test_h = load_split_featu
     tr_ratio=tr_ratio
 )
 
+# fix seed to always choose the same hyperparameters
+function sample_params()
+    hdim = sample([8,16,32,64,128,256])
+    activation = sample(["sigmoid", "tanh", "relu", "swish"])
+    nlayers = sample(2:4)
+    return (mdim=mdim, activation=activation, aggregation=aggregation, nlayers=nlayers)
+end
+
 idim = size(tr_x, 1)
 activation = relu
 hdim = 64
@@ -58,6 +66,7 @@ predictions = vcat(
     Flux.onecold(model(test_x), labelnames)
 )
 
+# add softmax output
 results_df = DataFrame(
     :hash = vcat(train_h, val_h, test_h),
     :ground_truth = vcat(tr_l, val_l, test_l),
@@ -69,4 +78,7 @@ results_df = DataFrame(
     )
 )
 
-safesave(expdir("results.csv"), results_df)
+"""
+Name of the model used for features will be in the features.csv file.
+"""
+safesave(expdir("cuckoo_small", modelname, "dense_classifier", "$(savename(parameters)).csv"), results_df)

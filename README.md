@@ -31,12 +31,15 @@ experiments
 |
 |--- cuckoo_small
     |--- model_1_result_files
-    |--- model_2_results_files
+    |--- model_2_result_files
 |
 |--- cuckoo_full
     |--- model_1_result_files
-    |--- model_2_results_files
+    |--- model_2_result_files
 ```
+
+There are two versions of the model folders. Either there are results csv files in the folder for models that can directly load JSON files, perform classification and return results. If a model is based on feature extraction prior to training, there should be a folder `features` and 
+`results`. The `features` folder should contain only csv files with features extracted. The results folder can have subfolders for each model run on the feature file.
 
 ## Label encoding
 
