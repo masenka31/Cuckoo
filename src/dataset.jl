@@ -10,23 +10,8 @@ using CSV, DataFrames
 using ProgressMeter
 
 const datapath = "/mnt/data/jsonlearning/Avast_cockoo"
+const datapath_full = "/mnt/data/jsonlearning/Avast_cuckoo_full"
 read_json(file) = JSON.parse(read(file, String))
-
-# get the schema for jsons
-# sch = schema(readdir("$datapath/public_small_reports", join = true)) do s
-# 	open(s,"r") do fio
-# 		read(fio, String)
-# 	end |> JSON.parse
-# end
-
-# save the JSON schema
-# wsave("data/schema.bson", Dict(:schema => sch))
-
-# load the schema
-# sch = BSON.load(datadir("schema.bson"))[:schema]
-
-# load the CSV file with info
-# df = CSV.read("$datapath/public_labels.csv", DataFrame)
 
 # dataset structure
 struct Dataset
@@ -38,9 +23,14 @@ struct Dataset
     extractor
 end
 
-function Dataset()
-    df = CSV.read("$datapath/public_labels.csv", DataFrame)
-    sch = BSON.load(datadir("schema.bson"))[:schema]
+function Dataset(full=false)
+    if full
+        df = CSV.read("$datapath_full/public_labels.csv", DataFrame)
+        sch = BSON.load(datadir("schema_full.bson"))[:schema]
+    else
+        df = CSV.read("$datapath/public_labels.csv", DataFrame)
+        sch = BSON.load(datadir("schema.bson"))[:schema]
+    end
     extractor = suggestextractor(sch)
 
     Dataset(
