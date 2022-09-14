@@ -5,7 +5,7 @@ Constructs a classifier as a model composed of Mill model and simple Chain of De
 The output dimension is fixed to be 10, `mdim` is the hidden dimension in both Mill model
 the Chain model.
 """
-function classifier_constructor(Xtrain; mdim, activation, aggregation, nlayers, odim = 10, seed = nothing)
+function classifier_constructor(Xtrain; mdim, activation, aggregation, nlayers, odim = 10, seed = nothing, kwargs...)
     
     # set seed
     (seed == nothing) ? nothing : Random.seed!(seed)

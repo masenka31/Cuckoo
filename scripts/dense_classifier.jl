@@ -63,7 +63,7 @@ train_data = Flux.Data.DataLoader((tr_x, tr_y), batchsize=p.batchsize)
 
 @info "Starting training."
 start_time = time()
-max_train_time = 60*60 # hour training time, no early stopping for now
+max_train_time = 60#*60 # hour training time, no early stopping for now
 while time() - start_time < max_train_time
     Flux.train!(loss, ps, train_data, opt)
     acc = loss(val_x, val_y)
@@ -86,10 +86,16 @@ info_dict = Dict(
 results_dict = merge(par_dict, info_dict)
 
 # calculate predicted labels
+# predictions = vcat(
+#     Flux.onecold(model(tr_x), labelnames),
+#     Flux.onecold(model(val_x), labelnames),
+#     Flux.onecold(model(test_x), labelnames)
+# )
+
 predictions = vcat(
-    Flux.onecold(model(tr_x), labelnames),
-    Flux.onecold(model(val_x), labelnames),
-    Flux.onecold(model(test_x), labelnames)
+    encode_labels(Flux.onecold(model(tr_x), labelnames),labelnames),
+    encode_labels(Flux.onecold(model(val_x), labelnames),labelnames),
+    encode_labels(Flux.onecold(model(test_x), labelnames), labelnames)
 )
 
 softmax_output = DataFrame(
@@ -102,7 +108,11 @@ softmax_output = DataFrame(
 # add softmax output
 results_df = DataFrame(
     :hash => vcat(tr_h, val_h, test_h),
-    :ground_truth => vcat(tr_l, val_l, test_l),
+    :ground_truth => vcat(
+        encode_labels(tr_l, labelnames),
+        encode_labels(val_l, labelnames),
+        encode_labels(test_l, labelnames)
+    ),
     :predicted => predictions,
     :split => vcat(
         repeat(["train"], length(tr_h)),
@@ -122,6 +132,7 @@ There are two files saved for each model: bson file and csv file:
 - bson file contains metadata: parameters of features, model, seeds etc.
 - csv file contains results: hash, ground truth, predicted labels, split names, and softmax output
 """
+
 @info "Saving results"
 safesave(expdir("cuckoo_small", modelname, "dense_classifier", "$id.bson"), results_dict)
 safesave(expdir("cuckoo_small", modelname, "dense_classifier", "$id.csv"), results_df)

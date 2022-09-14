@@ -91,7 +91,7 @@ end
 ### Check the encoding of everything since there is some kind of a mistake!!!
 ##############################################################################
 
-function encode_labels(y::Vector{String}, labelnames=nothing)
+function encode_labels(y::Vector, labelnames=nothing)
     isnothing(labelnames) ? labelnames = sort(unique(y)) : nothing
     categorical_labels = Int8[]
     d = Dict(labelnames .=> 1:length(labelnames))

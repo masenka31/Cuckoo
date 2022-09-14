@@ -3,20 +3,33 @@ include(srcdir("paths.jl"))
 include(srcdir("dataset.jl"))
 include(srcdir("data.jl"))
 include(srcdir("constructors.jl"))
+include(srcdir("utils.jl"))
 
 using Flux
 using Flux: @epochs
 
 modelname = "hmill_classifier_crossentropy"
-dataset = "cuckoo_small"
+
+seed = parse(Int, ARGS[1])
+rep = parse(Int, ARGS[2])
+labels_file = datadir("labels.csv")
+df = CSV.read(labels_file, DataFrame)
+tr_ratio = 60
+
+split_df = load_split(seed, tr_ratio)
 
 # load data
 d = Dataset()
-labels = d.family
-const labelnames = sort(unique(labels))
+const labelnames = sort(unique(df.family))
 
 # split data
-train_ix, val_ix, test_ix = load_split_indexes(split_path)
+r = collect(1:length(df.family))
+match_df = innerjoin(df, DataFrame(:ix => r, :hash => d.samples), split_df, on=:hash)
+
+train_ix = match_df.ix[match_df.split .== "train"]
+val_ix = match_df.ix[match_df.split .== "validation"]
+test_ix = match_df.ix[match_df.split .== "test"]
+
 Xtrain, ytrain = d[train_ix]
 Xval, yval = d[val_ix]
 Xtest, ytest = d[test_ix]
@@ -32,7 +45,7 @@ end
 function minibatch(x::ProductNode, y; batchsize=64)
     ix = sample(1:length(y), batchsize)
     labelnames = sort(unique(y))
-    x, y = d[ix]
+    x, y = Xtrain[ix], ytrain[ix]
     yoh = Flux.onehotbatch(y, labelnames)
     return (x, yoh)
 end
@@ -41,17 +54,21 @@ end
 ### Parameters, model, loss & accuracy ###
 ##########################################
 
-function sample_params()
+function sample_params(seed)
+    Random.seed!(seed)
+
     mdim = sample([8,16,32,64])
     activation = sample(["sigmoid", "tanh", "relu", "swish"])
     aggregation = sample(["SegmentedMeanMax", "SegmentedMax", "SegmentedMean"])
     nlayers = sample(1:3)
-    return (mdim=mdim, activation=activation, aggregation=aggregation, nlayers=nlayers)
+    batchsize = sample([32,64,128,256])
+
+    Random.seed!()
+    return (mdim=mdim, activation=activation, aggregation=aggregation, nlayers=nlayers,batchsize=batchsize)
 end
 
 # Parameters
-parameters = sample_params()
-# parameters = merge(parameters, (seed = seed, ))
+parameters = sample_params(seed)
 
 # loss and accuracy
 loss(X, y) = Flux.logitcrossentropy(full_model(X), y)
@@ -70,49 +87,73 @@ opt = ADAM()
 @info "Model created, starting training..."
 
 # train the model
-start_time = time()
 max_train_time = 60*15 # 20 minutes of training time
+
+start_time = time()
 while time() - start_time < max_train_time
-    batches = map(_ -> minibatch(d, train_ix), 1:10);
+    # batches = map(_ -> minibatch(d, train_ix, batchsize=parameters.batchsize), 1:10);
+    batches = map(_ -> minibatch(Xtrain, ytrain, batchsize=parameters.batchsize), 1:10);
     Flux.train!(loss, Flux.params(full_model), batches, opt)
-    # batch_loss = mean(x -> loss(x...), batches)
-    # @info "batch loss = $(round(batch_loss, digits=3))"
-    val_batch = minibatch(d, test_ix; batchsize=100)
-    acc = accuracy(val_batch...)
-    @info "validation batch accuracy = $(round(acc, digits=3))"
 end
 
+### SAVING
+
+using UUIDs
+id = "$(uuid1())"
+
+par_dict = Dict(keys(parameters) .=> values(parameters))
+info_dict = Dict(
+    :uuid => id,
+    :feature_model => modelname,
+    :nn_model => "dense_classifier",
+    :seed => seed,
+    :repetition => rep,
+    :tr_ratio => tr_ratio
+)
+results_dict = merge(par_dict, info_dict)
+
 # calculate predicted labels
-ztrain = encode_labels(Flux.onecold(full_model(Xtrain), labelnames), labelnames)
-zval = encode_labels(Flux.onecold(full_model(Xval), labelnames), labelnames)
-ztest = encode_labels(Flux.onecold(full_model(Xtest), labelnames), labelnames)
+s_tr = full_model(Xtrain)
+s_val = full_model(Xval)
+s_test = full_model(Xtest)
 
-# save true and predicted labels to a dataframe
-train_df = DataFrame(
-    :ytrain => encode_labels(ytrain, labelnames),
-    :ztrain => ztrain,
-)
-val_df = DataFrame(
-    :yval => encode_labels(yval, labelnames),
-    :zval => zval,
-)
-test_df = DataFrame(
-    :ytest => encode_labels(ytest, labelnames),
-    :ztest => ztest,
+ztrain = encode_labels(Flux.onecold(s_tr, labelnames), labelnames)
+zval = encode_labels(Flux.onecold(s_val, labelnames), labelnames)
+ztest = encode_labels(Flux.onecold(s_test, labelnames), labelnames)
+
+predictions = vcat(ztrain, zval, ztest)
+
+softmax_output = DataFrame(
+    hcat(
+        s_tr,
+        s_val,
+        s_test
+    ) |> transpose |> collect, :auto)
+
+
+# add softmax output
+results_df = DataFrame(
+    :hash => vcat(
+        match_df.hash[match_df.split .== "train"],
+        match_df.hash[match_df.split .== "validation"],
+        match_df.hash[match_df.split .== "test"],
+    ),
+    :ground_truth => vcat(
+        encode_labels(ytrain, labelnames),
+        encode_labels(yval, labelnames),
+        encode_labels(ytest, labelnames)
+    ),
+    :predicted => predictions,
+    :split => vcat(
+        repeat(["train"], length(ytrain)),
+        repeat(["validation"], length(yval)),
+        repeat(["test"], length(ytest))
+    )
 )
 
-# save the dataframes to csv
-# safesave(datadir(modelname, savename(parameters), "train.csv"), train_df)
-safesave(expdir(dataset, modelname, savename(parameters), "train.csv"), train_df)
-safesave(expdir(dataset, modelname, savename(parameters), "val.csv"), val_df)
-safesave(expdir(dataset, modelname, savename(parameters), "test.csv"), test_df)
+final_df = hcat(results_df, softmax_output)
 
-# save the model with results
-dict = Dict(
-    :model => full_model,
-    :parameters => parameters,
-    :train_acc => accuracy(encode_labels(ytrain, labelnames), ztrain),
-    :val_acc => accuracy(encode_labels(yval, labelnames), zval),
-    :test_acc => accuracy(encode_labels(ytest, labelnames), ztest)
-)
-safesave(expdir(dataset, modelname, savename(parameters), "results.bson"), dict)
+@info "Saving results"
+safesave(expdir("cuckoo_small", modelname, "dense_classifier", "$id.bson"), results_dict)
+safesave(expdir("cuckoo_small", modelname, "dense_classifier", "$id.csv"), results_df)
+@info "Results saved, experiment finished."
