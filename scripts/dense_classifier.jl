@@ -21,6 +21,7 @@ tr_x, tr_l, tr_h, val_x, val_l, val_h, test_x, test_l, test_h = load_split_featu
     tr_ratio=tr_ratio
 )
 const labelnames = sort(unique(df.family))
+@info "Data loaded."
 
 using Random
 # fix seed to always choose the same hyperparameters
@@ -50,6 +51,8 @@ else
     model = Chain(Dense(idim, p.hdim, act), Dense(p.hdim, p.hdim, act), Dense(p.hdim, p.hdim, act), Dense(p.hdim, odim))
 end
 
+@info "Model created."
+
 loss(x, y) = Flux.logitcrossentropy(model(x), y)
 opt = ADAM()
 ps = Flux.params(model)
@@ -58,12 +61,13 @@ tr_y = Flux.onehotbatch(tr_l, labelnames)
 val_y = Flux.onehotbatch(val_l, labelnames)
 train_data = Flux.Data.DataLoader((tr_x, tr_y), batchsize=p.batchsize)
 
+@info "Starting training."
 start_time = time()
 max_train_time = 60*60 # hour training time, no early stopping for now
 while time() - start_time < max_train_time
     Flux.train!(loss, ps, train_data, opt)
-    # acc = loss(val_x, val_y)
-    # @info "validation accuracy = $(round(acc, digits=3))"
+    acc = loss(val_x, val_y)
+    @info "validation accuracy = $(round(acc, digits=3))"
 end
 
 using UUIDs
@@ -108,6 +112,7 @@ results_df = DataFrame(
 )
 
 final_df = hcat(results_df, softmax_output)
+@info "Results calculated."
 
 """
 Name of the model is used to create a folder containing both the features and results of the model.
@@ -117,5 +122,7 @@ There are two files saved for each model: bson file and csv file:
 - bson file contains metadata: parameters of features, model, seeds etc.
 - csv file contains results: hash, ground truth, predicted labels, split names, and softmax output
 """
+@info "Saving results"
 safesave(expdir("cuckoo_small", modelname, "dense_classifier", "$id.bson"), results_dict)
 safesave(expdir("cuckoo_small", modelname, "dense_classifier", "$id.csv"), results_df)
+@info "Results saved, experiment finished."
