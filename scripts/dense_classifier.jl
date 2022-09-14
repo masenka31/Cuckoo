@@ -12,6 +12,7 @@ feature_file = ARGS[2]
 seed = parse(Int, ARGS[3])
 rep = parse(Int, ARGS[4])
 labels_file = datadir("labels.csv")
+df = CSV.read(labels_file, DataFrame)
 tr_ratio = 60
 
 tr_x, tr_l, tr_h, val_x, val_l, val_h, test_x, test_l, test_h = load_split_features(
@@ -19,7 +20,7 @@ tr_x, tr_l, tr_h, val_x, val_l, val_h, test_x, test_l, test_h = load_split_featu
     seed=seed,
     tr_ratio=tr_ratio
 )
-const labelnames = sort(unique(tr_l))
+const labelnames = sort(unique(df.family))
 
 using Random
 # fix seed to always choose the same hyperparameters
@@ -58,7 +59,7 @@ val_y = Flux.onehotbatch(val_l, labelnames)
 train_data = Flux.Data.DataLoader((tr_x, tr_y), batchsize=p.batchsize)
 
 start_time = time()
-max_train_time = 60#*60 # hour training time, no early stopping for now
+max_train_time = 60*60 # hour training time, no early stopping for now
 while time() - start_time < max_train_time
     Flux.train!(loss, ps, train_data, opt)
     # acc = loss(val_x, val_y)

@@ -31,7 +31,10 @@ function load_split_features(feature_file::String, labels_file::String; seed=1, 
 
     labels_df = CSV.read(labels_file, DataFrame)
     fdf = CSV.read(feature_file, DataFrame)
-    rename(fdf, 1 => :hash)
+    rename!(fdf, 1 => :hash)
+    if fdf.hash[1][1] == '/'
+        fdf.hash = map(x -> x[2:end-1], fdf.hash)
+    end
 
     df1 = innerjoin(fdf, split_df, on=:hash)
     df = innerjoin(df1, labels_df, on=:hash)

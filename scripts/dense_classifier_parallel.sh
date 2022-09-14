@@ -7,7 +7,7 @@ FEATURES=$2     # feature file
 NUM_SAMPLES=$3  # number of repetitions
 NUM_CONC=$4		# number of concurrent tasks in the array job
 
-LOG_DIR="${HOME}/logs/Cuckoo/${MODEL}"
+LOG_DIR="${HOME}/logs/Cuckoo/features/${MODEL}"
 echo "$LOG_DIR"
 
 if [ ! -d "$LOG_DIR" ]; then
