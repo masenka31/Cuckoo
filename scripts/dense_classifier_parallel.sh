@@ -2,11 +2,10 @@
 # This runs Cockoo dataset classification.
 
 # Run from this folder only.
-SCRIPT=$1
-MODEL=$2 		# which model to run
-FEATURES=$3     # feature file
+SCRIPT=$1       # which julia script to run
+MODEL=$2 		# name of the model
+FEATURES=$3     # path to feature file
 NUM_SAMPLES=$4  # number of repetitions
-NUM_CONC=$5		# number of concurrent tasks in the array job
 
 LOG_DIR="${HOME}/logs/Cuckoo/features/${SCRIPT}/${MODEL}"
 echo "$LOG_DIR"
@@ -16,7 +15,7 @@ if [ ! -d "$LOG_DIR" ]; then
 fi
 
 # submit to slurm
-for rep in $(seq 1 1 $SEED)
+for rep in $(seq 1 1 $NUM_SAMPLES)
 do
     for seed in {1..5}
     do
