@@ -5,10 +5,13 @@
 #SBATCH --mem=40G
 
 # provide the full path to feature file
-FEATURES=$1
+MODEL=$1
+FEATURES=$2
+SEED=$3
+REP=$4
 
 # module load Julia
 module load Julia/1.7.3-linux-x86_64
 
 # run from the scripts directory only!
-julia --project ./dense_classifier.jl FEATURES
+julia --project ./dense_classifier.jl $MODEL $FEATURES $SEED $REP

@@ -26,10 +26,8 @@ end
 Loads features from a csv file, splits them according to a given split,
 returns train/validation/test splits with labels.
 """
-function load_split_features(feature_file::String, labels_file::String, split_df::DataFrame=nothing; seed=1, tr_ratio=60)
-    if isnothing(spilt_df)
-        split_df = load_split(seed, tr_ratio)
-    end
+function load_split_features(feature_file::String, labels_file::String; seed=1, tr_ratio=60)
+    split_df = load_split(seed, tr_ratio)
 
     labels_df = CSV.read(labels_file, DataFrame)
     fdf = CSV.read(feature_file, DataFrame)
