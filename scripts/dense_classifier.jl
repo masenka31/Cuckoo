@@ -32,20 +32,21 @@ function sample_params(seed)
     batchsize = sample([32,64,128,256])
 
     Random.seed!()
-    return (hdim=mdim, activation=activation, nlayers=nlayers, batchsize=batchsize)
+    return (hdim=hdim, activation=activation, nlayers=nlayers, batchsize=batchsize)
 end
 
 idim = size(tr_x, 1)
 odim = 10
 
 p = sample_params(rep)
+act = eval(Symbol(p.activation))
 
 if p.nlayers == 2
-    model = Chain(Dense(idim, p.hdim, p.activation), Dense(p.hdim, odim))
+    model = Chain(Dense(idim, p.hdim, act), Dense(p.hdim, odim))
 elseif p.nlayers == 3
-    model = Chain(Dense(idim, p.hdim, p.activation), Dense(p.hdim, p.hdim, p.activation), Dense(p.hdim, odim))
+    model = Chain(Dense(idim, p.hdim, act), Dense(p.hdim, p.hdim, act), Dense(p.hdim, odim))
 else
-    model = Chain(Dense(idim, p.hdim, p.activation), Dense(p.hdim, p.hdim, p.activation), Dense(p.hdim, p.hdim, p.activation), Dense(p.hdim, odim))
+    model = Chain(Dense(idim, p.hdim, act), Dense(p.hdim, p.hdim, act), Dense(p.hdim, p.hdim, act), Dense(p.hdim, odim))
 end
 
 loss(x, y) = Flux.logitcrossentropy(model(x), y)
@@ -57,19 +58,17 @@ val_y = Flux.onehotbatch(val_l, labelnames)
 train_data = Flux.Data.DataLoader((tr_x, tr_y), batchsize=p.batchsize)
 
 start_time = time()
-max_train_time = 60*60 # hour training time, no early stopping for now
+max_train_time = 60#*60 # hour training time, no early stopping for now
 while time() - start_time < max_train_time
     Flux.train!(loss, ps, train_data, opt)
     # acc = loss(val_x, val_y)
     # @info "validation accuracy = $(round(acc, digits=3))"
 end
 
-
-
 using UUIDs
-id = uuid1()
+id = "$(uuid1())"
 
-par_dict = Dict(parameters)
+par_dict = Dict(keys(p) .=> values(p))
 info_dict = Dict(
     :uuid => id,
     :feature_model => modelname,
@@ -83,33 +82,39 @@ results_dict = merge(par_dict, info_dict)
 
 # calculate predicted labels
 predictions = vcat(
-    Flux.onecold(model(tr_x), labelnames)
-    Flux.onecold(model(val_x), labelnames)
+    Flux.onecold(model(tr_x), labelnames),
+    Flux.onecold(model(val_x), labelnames),
     Flux.onecold(model(test_x), labelnames)
 )
 
-softmax_output = hcat(
-    model(tr_x),
-    model(val_x),
-    model(test_x)
-) |> transpose |> collect |> DataFrame
+softmax_output = DataFrame(
+    hcat(
+        model(tr_x),
+        model(val_x),
+        model(test_x)
+    ) |> transpose |> collect, :auto)
 
 # add softmax output
 results_df = DataFrame(
-    :hash = vcat(train_h, val_h, test_h),
-    :ground_truth = vcat(tr_l, val_l, test_l),
-    :predicted = predictions,
+    :hash => vcat(tr_h, val_h, test_h),
+    :ground_truth => vcat(tr_l, val_l, test_l),
+    :predicted => predictions,
     :split => vcat(
-        repeat(["train"], length(train_h)),
+        repeat(["train"], length(tr_h)),
         repeat(["validation"], length(val_h)),
         repeat(["test"], length(test_h))
     )
 )
 
-final_df = hcat(resutls_df, softmax_output)
+final_df = hcat(results_df, softmax_output)
 
 """
-Name of the model used for features will be in the features.csv file.
+Name of the model is used to create a folder containing both the features and results of the model.
+Each subfolder is named by a neural network model acting on those features.
+
+There are two files saved for each model: bson file and csv file:
+- bson file contains metadata: parameters of features, model, seeds etc.
+- csv file contains results: hash, ground truth, predicted labels, split names, and softmax output
 """
 safesave(expdir("cuckoo_small", modelname, "dense_classifier", "$id.bson"), results_dict)
 safesave(expdir("cuckoo_small", modelname, "dense_classifier", "$id.csv"), results_df)
