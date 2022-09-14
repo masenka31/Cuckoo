@@ -8,10 +8,9 @@ include(srcdir("utils.jl"))
 using Flux
 using Flux: @epochs
 
-modelname = "hmill_classifier_crossentropy"
-
-seed = parse(Int, ARGS[1])
-rep = parse(Int, ARGS[2])
+modelname = ARGS[1]
+seed = parse(Int, ARGS[3])
+rep = parse(Int, ARGS[4])
 labels_file = datadir("labels.csv")
 df = CSV.read(labels_file, DataFrame)
 tr_ratio = 60
