@@ -5,7 +5,7 @@ include(srcdir("paths.jl"))
 
 accuracy(y1::T, y2::T) where T = mean(y1 .== y2)
 
-modelname = "hmill_classifier" #ARGS[1]
+modelname = "pedro007" #ARGS[1]
 
 bson_results = collect_results(expdir("cuckoo_small", modelname, "dense_classifier"))
 ids = bson_results.uuid
@@ -34,9 +34,14 @@ results = vcat(results...)
 # it should be possible to only group on repetition and tr_ratio to get the groups
 # time split does not have multiple seeds
 
-groupkeys = groupkeys = ["repetition", "activation", "nlayers", "batchsize", "aggregation", "mdim", "tr_ratio"]
+if modelname == "hmill_classifier"
+    groupkeys = ["repetition", "activation", "nlayers", "batchsize", "aggregation", "mdim", "tr_ratio"]
+else
+    groupkeys = ["repetition", "activation", "nlayers", "batchsize", "hdim", "tr_ratio"]
+end
 gg = groupby(results, groupkeys)
 cdf = combine(gg, [:train, :validation, :test] .=> mean, keepkeys=true, renamecols=false)
 
 sort!(cdf, :validation, rev=true)
-groupby(cdf, :tr_ratio)
+tr_g = groupby(cdf, :tr_ratio)
+foreach(x -> pretty_table(tr_g[x]), 1:length(tr_g))
