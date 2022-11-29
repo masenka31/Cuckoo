@@ -13,7 +13,12 @@ seed = parse(Int, ARGS[3])
 rep = parse(Int, ARGS[4])
 labels_file = datadir("labels.csv")
 df = CSV.read(labels_file, DataFrame)
-tr_ratio = 60
+trr = ARGS[5]
+if length(trr) > 2
+    tr_ratio = trr
+else
+    tr_ratio = parse(Int, ARGS[5])
+end
 
 tr_x, tr_l, tr_h, val_x, val_l, val_h, test_x, test_l, test_h = load_split_features(
     feature_file, labels_file,
@@ -63,7 +68,7 @@ train_data = Flux.Data.DataLoader((tr_x, tr_y), batchsize=p.batchsize)
 
 @info "Starting training."
 start_time = time()
-max_train_time = 60#*60 # hour training time, no early stopping for now
+max_train_time = 60*15 # 15 minutes training time, no early stopping for now
 while time() - start_time < max_train_time
     Flux.train!(loss, ps, train_data, opt)
     acc = loss(val_x, val_y)
