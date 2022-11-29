@@ -2,39 +2,46 @@ using DrWatson
 using CSV, DataFrames
 using Statistics
 using ProgressMeter
+using PrettyTables
 
-if isempty(ARGS)
-    model = "classifier"
-else
-    model = ARGS[1]
-end
+accuracy(y1::T, y2::T) where T = mean(y1 .== y2)
 
-accuracy(y1::Vector{T}, y2::Vector{T}) where T = mean(y1 .== y2)
+function load_results(resultspath::String, modelname::String; show=true)
+    bson_results = collect_results(resultspath)
+    ids = bson_results.uuid
 
-parentf = readdir(datadir(model), join=true, sort=false)
-results_df = DataFrame[]
-@showprogress for f in parentf
-    tr = CSV.read(joinpath(f, "train.csv"), DataFrame)
-    tr_acc = accuracy(tr[:,1], tr[:,2])
-    val = CSV.read(joinpath(f, "val.csv"), DataFrame)
-    val_acc = accuracy(val[:,1], val[:,2])
-    ts = CSV.read(joinpath(f, "test.csv"), DataFrame)
-    ts_acc = accuracy(ts[:,1], ts[:,2])
-    d = DataFrame([:train, :val, :test] .=>[tr_acc, val_acc, ts_acc])
-    push!(results_df, d)
-end
-results_df = vcat(results_df...)
+    results = []
 
-function extract_parameters(foldername::String, model::String)
-    r = ".*$model/(.*)"
-    m = match(Regex(r), foldername)
-    name = String(m.captures[1])
+    for (i, id) in enumerate(ids)
+        file = expdir("cuckoo_small", modelname, "dense_classifier", "$id.csv")
+        df = CSV.read(file, DataFrame)
+        gdf = groupby(df, :split)
 
-    s = split(name, "_")
-    d = Dict()
-    for par in s
-        ss = split(par, "=")
-        push!(d, ss[1] => ss[2])
+        # calculate accuracy
+        cdf = combine(gdf, [:ground_truth, :predicted] => accuracy => :accuracy)
+        d = DataFrame(cdf.split .=> cdf.accuracy)
+        
+        # add hyperparameters
+        par_d = bson_results[i, :]
+        d_end = hcat(d, DataFrame(par_d))
+
+        push!(results, d_end)
     end
-    return d
+
+    results = vcat(results...)
+
+    if modelname == "hmill_classifier"
+        groupkeys = ["repetition", "activation", "nlayers", "batchsize", "aggregation", "mdim", "tr_ratio"]
+    elseif modelname == "pedro007"
+        groupkeys = ["repetition", "activation", "nlayers", "batchsize", "hdim", "tr_ratio"]
+    end
+    gg = groupby(results, groupkeys)
+    cdf = combine(gg, [:train, :validation, :test] .=> mean, keepkeys=true, renamecols=false)
+
+    sort!(cdf, :validation, rev=true)
+    tr_g = groupby(cdf, :tr_ratio)
+    if show
+        foreach(x -> pretty_table(tr_g[x][1:5, :]), 1:length(tr_g))
+    end
+    return tr_g
 end
