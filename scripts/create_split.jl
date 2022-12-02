@@ -11,6 +11,49 @@ d = Dataset()
 labels = d.family
 const labelnames = sort(unique(labels))
 
+##############################################################################################
+################################ TIMESPLIT: HISTORY VS FUTURE ################################
+##############################################################################################
+
+using Dates
+using Random
+
+# extraction of indexes
+b = d.date .< Date(2019,06,01)
+history_ix = collect(1:length(d.family))[b]
+future_ix = collect(1:length(d.family))[.!b]
+
+n_seeds = 5
+
+for s in 1:n_seeds
+    # divide train/validation data from history
+    Random.seed!(s)
+    ixs = sample(history_ix, length(history_ix), replace=false)
+
+    val_ix = ixs[1:length(ixs)÷3]
+    train_ix = ixs[length(ixs)÷3+1:end]
+
+    # sample extraction
+    train_samples = d.samples[train_ix]
+    val_samples = d.samples[val_ix]
+    test_samples = d.samples[future_ix]
+
+    df = DataFrame(
+        :hash => vcat(train_samples, val_samples, test_samples),
+        :split => vcat(
+            repeat(["train"], length(train_samples)),
+            repeat(["validation"], length(val_samples)),
+            repeat(["test"], length(test_samples))
+        )
+    )
+
+    safesave(datadir("timesplit/split_$s.csv"), df)
+end
+
+###################################################################################
+################################ OTHER SPLITS HERE ################################
+###################################################################################
+
 # 60/20/20 split
 for seed in 1:5
     ratios = (0.6,0.2,0.2)
