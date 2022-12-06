@@ -7,25 +7,21 @@ include(srcdir("dataset.jl"))
 include(srcdir("data.jl"))
 include(srcdir("utils.jl"))
 
+# get the passed arguments
 modelname = ARGS[1]
 feature_file = ARGS[2]
 seed = parse(Int, ARGS[3])
 rep = parse(Int, ARGS[4])
-labels_file = datadir("labels.csv")
-df = CSV.read(labels_file, DataFrame)
-trr = ARGS[5]
-if length(trr) > 2
-    tr_ratio = trr
-else
-    tr_ratio = parse(Int, ARGS[5])
-end
+tr_ratio = "timesplit"
 
+# load labels file, merge tables and get train/validation/split
+labels_file = datadir("labels.csv")
 tr_x, tr_l, tr_h, val_x, val_l, val_h, test_x, test_l, test_h = load_split_features(
     feature_file, labels_file,
     seed=seed,
     tr_ratio=tr_ratio
 )
-const labelnames = sort(unique(df.family))
+const labelnames = sort(unique(tr_l))
 @info "Data loaded."
 
 using Random
@@ -59,7 +55,7 @@ end
 @info "Model created."
 
 loss(x, y) = Flux.logitcrossentropy(model(x), y)
-opt = ADAM()
+opt = ADAM(1e-4)
 ps = Flux.params(model)
 
 tr_y = Flux.onehotbatch(tr_l, labelnames)
@@ -71,12 +67,18 @@ start_time = time()
 max_train_time = 60*15 # 15 minutes training time, no early stopping for now
 while time() - start_time < max_train_time
     Flux.train!(loss, ps, train_data, opt)
-    acc = loss(val_x, val_y)
-    @info "validation accuracy = $(round(acc, digits=3))"
+    # ls = loss(val_x, val_y)
+    train_acc = mean(Flux.onecold(model(tr_x), labelnames) .== tr_l)
+    val_acc = mean(Flux.onecold(model(val_x), labelnames) .== val_l)
+    test_acc = mean(Flux.onecold(model(test_x), labelnames) .== test_l)
+
+    @info "Train accuracy = $(round(train_acc, digits=3))"
+    @info "Validation accuracy = $(round(val_acc, digits=3))"
+    @info "Test accuracy = $(round(test_acc, digits=3))"
 end
 
 using UUIDs
-id = "$(uuid1())"
+id = "$(uuid1())"   # generate unique uuid to save data in two files - one contains metadata, the other contains the predictions
 
 par_dict = Dict(keys(p) .=> values(p))
 info_dict = Dict(
@@ -85,17 +87,11 @@ info_dict = Dict(
     :nn_model => "dense_classifier",
     :seed => seed,
     :repetition => rep,
-    :tr_ratio => tr_ratio
+    :tr_ratio => tr_ratio,
+    :model => model
 )
 
 results_dict = merge(par_dict, info_dict)
-
-# calculate predicted labels
-# predictions = vcat(
-#     Flux.onecold(model(tr_x), labelnames),
-#     Flux.onecold(model(val_x), labelnames),
-#     Flux.onecold(model(test_x), labelnames)
-# )
 
 predictions = vcat(
     encode_labels(Flux.onecold(model(tr_x), labelnames),labelnames),
@@ -103,14 +99,7 @@ predictions = vcat(
     encode_labels(Flux.onecold(model(test_x), labelnames), labelnames)
 )
 
-softmax_output = DataFrame(
-    hcat(
-        model(tr_x),
-        model(val_x),
-        model(test_x)
-    ) |> transpose |> collect, :auto)
-
-# add softmax output
+# predictions of the model
 results_df = DataFrame(
     :hash => vcat(tr_h, val_h, test_h),
     :ground_truth => vcat(
@@ -126,6 +115,15 @@ results_df = DataFrame(
     )
 )
 
+# add the softmax output
+softmax_output = DataFrame(
+    hcat(
+        model(tr_x),
+        model(val_x),
+        model(test_x)
+    ) |> transpose |> collect, :auto
+)
+
 final_df = hcat(results_df, softmax_output)
 @info "Results calculated."
 
@@ -138,7 +136,7 @@ There are two files saved for each model: bson file and csv file:
 - csv file contains results: hash, ground truth, predicted labels, split names, and softmax output
 """
 
-@info "Saving results"
-safesave(expdir("cuckoo_small", modelname, "dense_classifier", "$id.bson"), results_dict)
-safesave(expdir("cuckoo_small", modelname, "dense_classifier", "$id.csv"), results_df)
+@info "Saving results..."
+safesave(expdir("results", modelname, "dense_classifier", "$id.bson"), results_dict)
+safesave(expdir("results", modelname, "dense_classifier", "$id.csv"), results_df)
 @info "Results saved, experiment finished."

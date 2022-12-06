@@ -14,6 +14,8 @@ function load_split(seed, tr_ratio=60)
         df = CSV.read(splitdir("time41/01_split.csv"), DataFrame)
     elseif tr_ratio == "time57"
         df = CSV.read(splitdir("time57/01_split.csv"), DataFrame)
+    elseif tr_ratio == "timesplit"
+        df = CSV.read(datadir("timesplit/split_$(seed).csv"), DataFrame)
     else
         error("Train ratio must be either 60, 20 for normal splits, or \"time41\", \"time57\" for time splits.")
     end
@@ -56,3 +58,29 @@ function load_split_features(feature_file::String, labels_file::String; seed=1, 
     )
 end
 
+function load_split_indexes(d::Dataset; seed=1, tr_ratio="timesplit")
+    # load split
+    split_df = load_split(seed, tr_ratio)
+
+    # prepare dataset for merge
+    data_df = DataFrame(
+        :i => 1:length(d.family),
+        :hash => d.samples,
+    )
+
+    df = innerjoin(data_df, split_df, on=:hash)
+
+    train_ix = filter(:split => x -> x == "train", df)[!, :i]
+    val_ix = filter(:split => x -> x == "validation", df)[!, :i]
+    test_ix = filter(:split => x -> x == "test", df)[!, :i]
+
+    Xtrain, ytrain = d[train_ix]
+    Xval, yval = d[val_ix]
+    Xtest, ytest = d[test_ix]
+
+    return (
+        Xtrain, ytrain, filter(:split => x -> x == "train", df).hash,
+        Xval, yval, filter(:split => x -> x == "validation", df).hash,
+        Xtest, ytest, filter(:split => x -> x == "test", df).hash
+    )
+end

@@ -6,14 +6,16 @@ using PrettyTables
 
 accuracy(y1::T, y2::T) where T = mean(y1 .== y2)
 
-function load_results(resultspath::String, modelname::String; show=true)
+function load_results(modelname::String; show=true)
+    resultspath = expdir("results", modelname, "dense_classifier")
     bson_results = collect_results(resultspath)
     ids = bson_results.uuid
 
     results = []
 
     for (i, id) in enumerate(ids)
-        file = expdir("cuckoo_small", modelname, "dense_classifier", "$id.csv")
+        # file = expdir("cuckoo_small", modelname, "dense_classifier", "$id.csv")
+        file = expdir("results", modelname, "dense_classifier", "$id.csv")
         df = CSV.read(file, DataFrame)
         gdf = groupby(df, :split)
 
@@ -32,7 +34,7 @@ function load_results(resultspath::String, modelname::String; show=true)
 
     if modelname == "hmill_classifier"
         groupkeys = ["repetition", "activation", "nlayers", "batchsize", "aggregation", "mdim", "tr_ratio"]
-    elseif modelname == "pedro007"
+    elseif modelname in ["pedro007", "vasek007"]
         groupkeys = ["repetition", "activation", "nlayers", "batchsize", "hdim", "tr_ratio"]
     end
     gg = groupby(results, groupkeys)

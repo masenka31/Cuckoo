@@ -8,38 +8,32 @@ Repository for experiments with the Cuckoo dataset.
 
 The data itself is saved at `/mnt/data/jsonlearning/Avast_cockoo`. There are two versions of the dataset: small and full.
 
-The splits are saved to folder `/mnt/data/jsonlearning/splits` where they are separated based on the small or full version into
-- `/mnt/data/jsonlearning/splits/Avast_cockoo`
-- `/mnt/data/jsonlearning/splits/Avast_cuckoo_full`
-
-There are other subfolders which distinguish the type of split
-- `60-20-20` is the split of 60/20/20
-- `20-40-40` is the split of 20/40/40
-- `time41` is a split that cuts the train data to be all samples seen before 2019-01-01, resulting in 41% of samples being train samples
-- `time57` is a split that cuts the data at 2019-04-01 resulting in 57% of samples being train,
-validation and test splits for the time splits are randomly sampled from the rest.
+The timesplits are currently saved in folder `/home/maskomic/projects/Cockoo/data/timesplit`. They will be moved to a general folder once the repository is moved there as well.
 
 ### Feature files
 
-If there are feature files that serve as an input to other models (such as classifier), they should be saved as `csv` files where the first column are the ids, thec column is called "hash" and all the other columns are features (do not have to have specific names).
+If there are feature files that serve as an input to other models (such as classifier), they should be saved as `csv` files where the first column are the ids, the ccolumn is called "hash" and all the other columns are features (do not have to have specific names).
+
+*Note: No label column is needed! The labels are mapped from the hash ids.*
 
 ### Results
 
-The results for experiments are stored in folder `experiments`. The structure is as follows
+The results for experiments are stored in folder `experiments/results`. The structure is as follows
 ```
-experiments
+results
 |
-|--- cuckoo_small
+|--- feature_extractor1
     |--- model_1_result_files
     |--- model_2_result_files
 |
-|--- cuckoo_full
+|--- feature_extractor2
     |--- model_1_result_files
     |--- model_2_result_files
 ```
 
-There are two versions of the model folders. Either there are results csv files in the folder for models that can directly load JSON files, perform classification and return results. If a model is based on feature extraction prior to training, there should be a folder `features` and 
-`results`. The `features` folder should contain only csv files with features extracted. The results folder can have subfolders for each model run on the feature file.
+Name of the feature extractor is used to create a general folder. The next folder contains results files for a particular classification model. The results are saved in two files: `bson` file and `csv` file:
+- `bson` file contains metadata: parameters of features, model, seeds etc.
+- `csv` file contains results: hash, ground truth, predicted labels, split names, and softmax output.
 
 ## Label encoding
 

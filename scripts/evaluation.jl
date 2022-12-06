@@ -2,6 +2,7 @@ using DrWatson
 using DataFrames, CSV
 using Statistics
 using PrettyTables
+using Flux, Mill
 include(srcdir("paths.jl"))
 include(srcdir("evaluation.jl"))
 
@@ -24,3 +25,10 @@ sort!(f, :dataset_type)
 
 pretty_table(f[:, [:dataset_type, :model, :train, :validation, :test]], nosubheader=true, formatters = ft_printf("%5.3f"), hlines=[0,1,3,5,7,9])
 pretty_table(f[:, [:dataset_type, :model, :train, :validation, :test]], nosubheader=true, formatters = ft_printf("%5.3f"), hlines=[0,1,3,5,7,9], tf=tf_latex_booktabs)
+
+### New evaluation ###
+df_vasek = load_results("vasek007")
+df_pedro = load_results("pedro007")
+
+foreach(x -> pretty_table(df_vasek[x][1:5, :]), 1:length(df_vasek))
+foreach(x -> pretty_table(df_pedro[x][1:5, :]), 1:length(df_pedro))
