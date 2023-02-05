@@ -5,19 +5,24 @@ Loads the correct split dataframe given the split seed and ratio.
 
 TODO: Add time split as well.
 """
-function load_split(seed, tr_ratio=60)
+function load_split(seed, tr_ratio = 60)
     if tr_ratio == 60
-        df = CSV.read(splitdir("60-20-20/0$(seed)_split.csv"), DataFrame)
+        df = CSV.read(splitsdir("60-20-20/0$(seed)_split.csv"), DataFrame)
     elseif tr_ratio == 20
-        df = CSV.read(splitdir("20-40-40/0$(seed)_split.csv"), DataFrame)
+        df = CSV.read(splitsdir("20-40-40/0$(seed)_split.csv"), DataFrame)
     elseif tr_ratio == "time41"
-        df = CSV.read(splitdir("time41/01_split.csv"), DataFrame)
+        df = CSV.read(splitsdir("time41/01_split.csv"), DataFrame)
     elseif tr_ratio == "time57"
-        df = CSV.read(splitdir("time57/01_split.csv"), DataFrame)
+        df = CSV.read(splitsdir("time57/01_split.csv"), DataFrame)
     elseif tr_ratio == "timesplit"
-        df = CSV.read(datadir("timesplit/split_$(seed).csv"), DataFrame)
+        df = CSV.read("/mnt/data/jsonlearning/splits/timesplit/split_$(seed).csv", DataFrame)
+        # df = CSV.read(datadir("timesplit/split_$(seed).csv"), DataFrame)
     else
-        error("Train ratio must be either 60, 20 for normal splits, or \"time41\", \"time57\" for time splits.")
+        error("""Train ratio must be either
+        - 60, 20 for normal splits
+        - \"time41\", \"time57\" for time splits
+        - \"timesplit\" for new timesplit
+        - \"garcia\" for one garcia split.""")
     end
     return df
 end
@@ -28,7 +33,7 @@ end
 Loads features from a csv file, splits them according to a given split,
 returns train/validation/test splits with labels.
 """
-function load_split_features(feature_file::String, labels_file::String; seed=1, tr_ratio=60)
+function load_split_features(feature_file::String, labels_file::String; seed=1, tr_ratio=60, labels::Symbol=:family)
     split_df = load_split(seed, tr_ratio)
 
     labels_df = CSV.read(labels_file, DataFrame)
@@ -52,20 +57,27 @@ function load_split_features(feature_file::String, labels_file::String; seed=1, 
     )
 
     return (
-        train[:, 1:end-3] |> Array |> transpose |> collect, train.family, filter(:split => x -> x == "train", df).hash,
-        validation[:, 1:end-3] |> Array |> transpose |> collect, validation.family, filter(:split => x -> x == "validation", df).hash,
-        test[:, 1:end-3] |> Array |> transpose |> collect, test.family, filter(:split => x -> x == "test", df).hash
+        train[:, 1:end-3] |> Array |> transpose |> collect, train[:family], filter(:split => x -> x == "train", df).hash,
+        validation[:, 1:end-3] |> Array |> transpose |> collect, validation[:family], filter(:split => x -> x == "validation", df).hash,
+        test[:, 1:end-3] |> Array |> transpose |> collect, test[:family], filter(:split => x -> x == "test", df).hash
     )
 end
 
-function load_split_indexes(d::Dataset; seed=1, tr_ratio="timesplit")
+function load_split_indexes(d::Dataset; seed::Int = 1, tr_ratio = "timesplit")
     # load split
     split_df = load_split(seed, tr_ratio)
+
+    # export the hash to map dataframes together
+    if d.name == "cuckoo"
+        hash = map(x -> x[end-68:end-5], d.samples)
+    elseif d.name == "garcia"
+        hash = d.samples
+    end
 
     # prepare dataset for merge
     data_df = DataFrame(
         :i => 1:length(d.family),
-        :hash => d.samples,
+        :hash => hash,
     )
 
     df = innerjoin(data_df, split_df, on=:hash)
