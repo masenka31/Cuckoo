@@ -1,13 +1,17 @@
 using DrWatson
-include(srcdir("dataset.jl"))
-include(srcdir("data.jl"))
-include(srcdir("constructors.jl"))
-
+using Cuckoo
 using Flux
-using Flux: @epochs
+using JsonGrinder
+using StatsBase
+using DataFrames
+using Random
+
+# include(srcdir("dataset.jl"))
+# include(srcdir("data.jl"))
+# include(srcdir("constructors.jl"))
 
 # load data and labels
-d = Dataset()
+d = Dataset("cuckoo", full=false)
 labels = d.family
 const labelnames = sort(unique(labels))
 
@@ -161,3 +165,47 @@ df = DataFrame(
 )
 
 safesave(datadir("time57/01_split.csv"), df)
+
+####################################################################################
+################################ Garcia data splits ################################
+####################################################################################
+
+d = Dataset("garcia")
+labels = d.family
+const labelnames = sort(unique(labels))
+
+# samples are to be tested via cross-validation, probably
+# I need to split those as such
+
+cv_splits = map(x -> "/$x/", 0:9)
+cv_indexes = map(x -> occursin.(x, d.samples .|> String), cv_splits)
+
+for (i, class_indexes) in enumerate(cv_indexes)
+    out_class = d.samples[class_indexes]
+    in_classes = d.samples[.!class_indexes]
+
+    n = length(in_classes)
+    n_train = round(Int, n * 0.8)
+
+    # ??? for seed in 1:5
+    seed = i
+    Random.seed!(seed)
+    in_indexes = sample(1:n, n, replace=false)
+    train_ix = in_indexes[1:n_train]
+    val_ix = in_indexes[n_train+1:end]
+
+    train_samples = in_classes[train_ix]
+    val_samples = in_classes[val_ix]
+    test_samples = out_class
+
+    df = DataFrame(
+        :hash => vcat(train_samples, val_samples, test_samples),
+        :split => vcat(
+            repeat(["train"], length(train_samples)),
+            repeat(["validation"], length(val_samples)),
+            repeat(["test"], length(test_samples))
+        )
+    )
+
+    safesave(splitsdir("garcia/0$(seed)_split.csv"), df)
+end

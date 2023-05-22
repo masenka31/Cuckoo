@@ -6,7 +6,7 @@ MODEL=$1 		# which model to run
 NUM_SAMPLES=$2  # number of repetitions
 NUM_CONC=$3		# number of concurrent tasks in the array job
 
-LOG_DIR="${HOME}/logs/Cuckoo/${MODEL}"
+LOG_DIR="${HOME}/logs/Cuckoo/new/${MODEL}"
 echo "$LOG_DIR"
 
 if [ ! -d "$LOG_DIR" ]; then

@@ -5,14 +5,12 @@ Note: Expect at least 30 minutes of training for each repetition.
 """
 
 using DrWatson
-include(srcdir("dataset.jl"))
-include(srcdir("data.jl"))
-include(srcdir("constructors.jl"))
-include(srcdir("paths.jl"))
-include(srcdir("utils.jl"))
-
+using Cuckoo
+using JsonGrinder
+using Mill
+using StatsBase
+using DataFrames
 using Flux
-using Flux: @epochs
 using UUIDs
 
 # get the passed arguments
@@ -75,7 +73,7 @@ end
 
     # train the model for 15 minutes
     Flux.train!(loss, Flux.params(full_model), [(xtr, ytr)], opt)
-    max_train_time = 60*15 # 15 minutes of training time
+    max_train_time = 60*30 # 15 minutes of training time
     
     start_time = time()
     while time() - start_time < max_train_time
@@ -129,9 +127,9 @@ end
     # add the softmax output
     @time softmax_output = DataFrame(
         hcat(
-            hcat(map(i -> full_model(tr_x[i]), 1:nobs(tr_x))...),
-            hcat(map(i -> full_model(val_x[i]), 1:nobs(val_x))...),
-            hcat(map(i -> full_model(test_x[i]), 1:nobs(test_x))...)
+            hcat(map(i -> softmax(full_model(tr_x[i])), 1:nobs(tr_x))...),
+            hcat(map(i -> softmax(full_model(val_x[i])), 1:nobs(val_x))...),
+            hcat(map(i -> softmax(full_model(test_x[i])), 1:nobs(test_x))...)
         ) |> transpose |> collect, :auto
     )
 
@@ -139,8 +137,8 @@ end
     @info "Results calculated."
 
     @info "Saving results..."
-    safesave(expdir("results", modelname, "dense_classifier", "$id.bson"), results_dict)
-    safesave(expdir("results", modelname, "dense_classifier", "$id.csv"), results_df)
+    safesave(expdir("results", modelname, "dense_classifier", "timesplit", "$id.bson"), results_dict)
+    safesave(expdir("results", modelname, "dense_classifier", "timesplit", "$id.csv"), results_df)
     @info "Results saved, experiment no. $rep finished."
 
 end

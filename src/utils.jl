@@ -1,3 +1,5 @@
+using CSV
+
 """
     load_split(seed, tr_ratio=60)
 
@@ -17,6 +19,8 @@ function load_split(seed, tr_ratio = 60)
     elseif tr_ratio == "timesplit"
         df = CSV.read("/mnt/data/jsonlearning/splits/timesplit/split_$(seed).csv", DataFrame)
         # df = CSV.read(datadir("timesplit/split_$(seed).csv"), DataFrame)
+    elseif tr_ratio == "garcia"
+        df = CSV.read(splitsdir("garcia/0$(seed)_split.csv"), DataFrame)
     else
         error("""Train ratio must be either
         - 60, 20 for normal splits
@@ -63,6 +67,35 @@ function load_split_features(feature_file::String, labels_file::String; seed=1, 
     )
 end
 
+function load_indexes(d::Dataset; seed::Int=1, tr_ratio="garcia")
+    split_df = load_split(seed, tr_ratio)
+
+    # export the hash to map dataframes together
+    if d.name == "cuckoo"
+        hash = map(x -> x[end-68:end-5], d.samples)
+    elseif d.name == "garcia"
+        hash = d.samples
+    end
+
+    # prepare dataset for merge
+    data_df = DataFrame(
+        :i => 1:length(d.family),
+        :hash => hash,
+    )
+
+    df = innerjoin(data_df, split_df, on=:hash)
+
+    train_ix = filter(:split => x -> x == "train", df)[!, :i]
+    val_ix = filter(:split => x -> x == "validation", df)[!, :i]
+    test_ix = filter(:split => x -> x == "test", df)[!, :i]
+
+    train_h = filter(:split => x -> x == "train", df).hash
+    val_h = filter(:split => x -> x == "validation", df).hash
+    test_h = filter(:split => x -> x == "test", df).hash
+
+    return train_ix, val_ix, test_ix, train_h, val_h, test_h
+end
+
 function load_split_indexes(d::Dataset; seed::Int = 1, tr_ratio = "timesplit")
     # load split
     split_df = load_split(seed, tr_ratio)
@@ -86,13 +119,26 @@ function load_split_indexes(d::Dataset; seed::Int = 1, tr_ratio = "timesplit")
     val_ix = filter(:split => x -> x == "validation", df)[!, :i]
     test_ix = filter(:split => x -> x == "test", df)[!, :i]
 
-    Xtrain, ytrain = d[train_ix]
-    Xval, yval = d[val_ix]
-    Xtest, ytest = d[test_ix]
+    if d.name == "garcia"
+        Xtrain, ytrain, mtrain = d[train_ix]
+        Xval, yval, mval = d[val_ix]
+        Xtest, ytest, mtest = d[test_ix]
 
-    return (
-        Xtrain, ytrain, filter(:split => x -> x == "train", df).hash,
-        Xval, yval, filter(:split => x -> x == "validation", df).hash,
-        Xtest, ytest, filter(:split => x -> x == "test", df).hash
-    )
+        return (
+            Xtrain, ytrain, filter(:split => x -> x == "train", df).hash[mtrain],
+            Xval, yval, filter(:split => x -> x == "validation", df).hash[mval],
+            Xtest, ytest, filter(:split => x -> x == "test", df).hash[mtest]
+        )
+    else
+        Xtrain, ytrain = d[train_ix]
+        Xval, yval = d[val_ix]
+        Xtest, ytest = d[test_ix]
+
+        return (
+            Xtrain, ytrain, filter(:split => x -> x == "train", df).hash,
+            Xval, yval, filter(:split => x -> x == "validation", df).hash,
+            Xtest, ytest, filter(:split => x -> x == "test", df).hash
+        )
+    end
 end
+

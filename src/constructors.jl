@@ -1,3 +1,5 @@
+using Flux
+
 """
     classifier_constructor(Xtrain, mdim, activation, aggregation, nlayers; seed = nothing)
 
@@ -32,7 +34,7 @@ function classifier_constructor(Xtrain; mdim, activation, aggregation, nlayers, 
     end
 
     # connect the full model
-    full_model = Chain(m, net, softmax)
+    full_model = Chain(m, net)
 
     # reset seed
 	(seed !== nothing) ? Random.seed!() : nothing
