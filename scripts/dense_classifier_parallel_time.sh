@@ -3,7 +3,7 @@
 
 # Run from this folder only.
 SCRIPT=$1       # which julia script to run
-MODEL=$2                # name of the model
+MODEL=$2        # name of the model
 FEATURES=$3     # path to feature file
 NUM_SAMPLES=$4  # number of repetitions
 RATIO=$5
