@@ -8,15 +8,15 @@ Loads the correct split dataframe given the split seed and ratio.
 TODO: Add time split as well.
 """
 function load_split(seed, tr_ratio = 60)
-    if tr_ratio == 60
-        df = CSV.read(splitsdir("60-20-20/0$(seed)_split.csv"), DataFrame)
-    elseif tr_ratio == 20
-        df = CSV.read(splitsdir("20-40-40/0$(seed)_split.csv"), DataFrame)
-    elseif tr_ratio == "time41"
-        df = CSV.read(splitsdir("time41/01_split.csv"), DataFrame)
-    elseif tr_ratio == "time57"
-        df = CSV.read(splitsdir("time57/01_split.csv"), DataFrame)
-    elseif tr_ratio == "timesplit"
+    # if tr_ratio == 60
+    #     df = CSV.read(splitsdir("60-20-20/0$(seed)_split.csv"), DataFrame)
+    # elseif tr_ratio == 20
+    #     df = CSV.read(splitsdir("20-40-40/0$(seed)_split.csv"), DataFrame)
+    # elseif tr_ratio == "time41"
+    #     df = CSV.read(splitsdir("time41/01_split.csv"), DataFrame)
+    # elseif tr_ratio == "time57"
+    #     df = CSV.read(splitsdir("time57/01_split.csv"), DataFrame)
+    if tr_ratio == "timesplit"
         df = CSV.read("/mnt/data/jsonlearning/splits/timesplit/split_$(seed).csv", DataFrame)
         # df = CSV.read(datadir("timesplit/split_$(seed).csv"), DataFrame)
     elseif tr_ratio == "garcia"

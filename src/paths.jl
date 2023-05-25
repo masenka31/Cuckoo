@@ -12,7 +12,7 @@ const experiments_path = "/mnt/data/jsonlearning/experiments"
 const results_path = "/mnt/data/jsonlearning/results"
 const splits_path = "/mnt/data/jsonlearning/splits"
 
-const cuckoo_path = "/mnt/data/jsonlearning/Avast_cockoo"
+const cuckoo_path = "/mnt/data/jsonlearning/Avast_cuckoo"
 const cuckoo_full_path = "/mnt/data/jsonlearning/Avast_cuckoo_full"
 
 const benign_path = "/mnt/data/jsonlearning/garcia/reports/benign"
