@@ -12,7 +12,7 @@ function classifier_constructor(Xtrain; mdim, activation, aggregation, nlayers, 
     # set seed
     (seed == nothing) ? nothing : Random.seed!(seed)
 
-    activation = eval(Symbol(activation))
+    activation = eval(Symbol(activation)) # from string to function
     aggregation = BagCount ∘ eval(Symbol(aggregation))
 
     # mill model

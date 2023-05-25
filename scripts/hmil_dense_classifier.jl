@@ -89,6 +89,7 @@ end
 
     id = "$(uuid1())"   # generate unique uuid to save data in two files - one contains metadata, the other contains the predictions
 
+    # parameters dictionary
     par_dict = Dict(keys(parameters) .=> values(parameters))
     info_dict = Dict(
         :uuid => id,
