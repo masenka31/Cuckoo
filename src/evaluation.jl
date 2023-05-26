@@ -7,7 +7,6 @@ using PrettyTables
 using Mill, Flux
 
 accuracy(y1::T, y2::T) where T = mean(y1 .== y2)
-modelname = "hmil"
 
 function load_results(modelname::String="hmil", dataset::String="garcia")
     resultspath = expdir("results", "garcia", modelname, "dense_classifier")

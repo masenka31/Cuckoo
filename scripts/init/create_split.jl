@@ -6,10 +6,6 @@ using StatsBase
 using DataFrames
 using Random
 
-# include(srcdir("dataset.jl"))
-# include(srcdir("data.jl"))
-# include(srcdir("constructors.jl"))
-
 # load data and labels
 d = Dataset("cuckoo", full=false)
 labels = d.family

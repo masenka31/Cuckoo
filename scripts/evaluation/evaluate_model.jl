@@ -1,9 +1,8 @@
 using DrWatson
+using Cuckoo
 using Mill, Flux, DataFrames, CSV
 using Statistics
 using PrettyTables, ProgressMeter
-
-include(srcdir("paths.jl"))
 
 if isempty(ARGS)
     modelname = "hmill_classifier_crossentropy"

@@ -6,7 +6,9 @@ using Cuckoo: read_json
 using Flux
 using UUIDs
 
-# schema preparation and extraction
+###########################################################################################
+###                          Schema preparation and extraction                          ###
+###########################################################################################
 
 d = Dataset("garcia")
 
@@ -37,7 +39,6 @@ delete!(extract_data[:behavior].dict, :apistats)
 extract_data[:behavior][:generic]
 
 # delete!(extract_data[:behavior].dict, :generic)
-
 
 extract_data[:static].dict
 delete!(extract_data[:static].dict, :keys)
@@ -171,7 +172,7 @@ CSV.write("/mnt/data/jsonlearning/garcia/reports/labels.csv", df)
 ############################################### Schema, extractors, etc. ###############################################
 ########################################################################################################################
 
-sch = BSON.load(datadir("schema_benign.bson"))[:schema]
+# sch = BSON.load(datadir("schema_benign.bson"))[:schema]
 sch = BSON.load(datadir("schema.bson"))[:schema]
 
 extractor = suggestextractor(sch)

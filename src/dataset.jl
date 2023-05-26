@@ -11,7 +11,27 @@ export read_json
 
 read_json(file) = JSON.parse(read(file, String))
 
-# dataset structure
+"""
+```
+Dataset
+    samples
+    family
+    type
+    date
+    # schema
+    extractor
+    name
+```
+
+The dataset structure contains information about the Cuckoo data.
+It loads samples, family (labels), type (if present), date (if present),
+extractor and the dataset name. Schema is not loaded currently.
+
+Supported datasets:
+- "cuckoo" (full=False)
+- "cuckoo", full=True
+- "garcia"
+"""
 struct Dataset
     samples
     family
@@ -38,12 +58,9 @@ function Dataset(data::String="cuckoo"; full=false)
         extractor = suggestextractor(sch)
         
     elseif data == "garcia"
-        # for garcia data, for now, load the original small cuckoo schema
-        # and get the extractor from that
-        df = CSV.read("/mnt/data/jsonlearning/garcia/reports/labels.csv", DataFrame)
+        df = CSV.read("/mnt/data/jsonlearning/garcia_orig/reports/labels.csv", DataFrame)
         files = df.samples
-        # sch = BSON.load(datadir("schema.bson"))[:schema]
-        sch = []
+        sch = [] # not loading any schema, just saved extractor
         extractor = BSON.load(datadir("garcia_extractor.bson"))[:extractor]
     end
     

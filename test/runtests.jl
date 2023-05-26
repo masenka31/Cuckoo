@@ -5,7 +5,7 @@ using DrWatson
 @quickactivate
 
 @testset "Paths" begin
-    @test cuckoo_path == "/mnt/data/jsonlearning/Avast_cockoo"
+    @test cuckoo_path == "/mnt/data/jsonlearning/Avast_cuckoo"
     @test cuckoo_full_path == "/mnt/data/jsonlearning/Avast_cuckoo_full"
     @test benign_path == "/mnt/data/jsonlearning/garcia/reports/benign"
     @test malicious_path == "/mnt/data/jsonlearning/garcia/reports/malicious"

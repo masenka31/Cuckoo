@@ -6,9 +6,9 @@ Repository for experiments with the Cuckoo dataset.
 
 ### Data and train/validation/test splits
 
-The data itself is saved at `/mnt/data/jsonlearning/Avast_cockoo`. There are two versions of the dataset: small and full.
+The data itself is saved at `/mnt/data/jsonlearning/Avast_cuckoo`. There are two versions of the dataset: small and full.
 
-The timesplits are currently saved in folder `/home/maskomic/projects/Cockoo/data/timesplit`. They will be moved to a general folder once the repository is moved there as well.
+The timesplits are currently saved in folder `/home/maskomic/projects/Cuckoo/data/timesplit`. They will be moved to a general folder once the repository is moved there as well.
 
 ### Feature files
 
@@ -22,13 +22,25 @@ The results for experiments are stored in folder `experiments/results`. The stru
 ```
 results
 |
-|--- feature_extractor1
-    |--- model_1_result_files
-    |--- model_2_result_files
+|--- feature_extractor_1
+    |--- model_1
+        |--- result_file_1
+        |--- result_file_2
+        ...
+    |--- model_2
+        |--- result_file_1
+        |--- result_file_2
+        ...
 |
-|--- feature_extractor2
-    |--- model_1_result_files
-    |--- model_2_result_files
+|--- feature_extractor_2
+    |--- model_1
+        |--- result_file_1
+        |--- result_file_2
+        ...
+    |--- model_2
+        |--- result_file_1
+        |--- result_file_2
+        ...
 ```
 
 Name of the feature extractor is used to create a general folder. The next folder contains results files for a particular classification model. The results are saved in two files: `bson` file and `csv` file:
@@ -53,3 +65,5 @@ Labels can be encoded to numerical values. The key is simple: sort unique labels
 
 Currently implemented:
 - Mill.jl multi-class classifier
+- standard classifier on Pedro's features
+- standard classifier on Vasek's features

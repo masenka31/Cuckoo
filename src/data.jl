@@ -109,11 +109,3 @@ function decode_labels(y::Vector{Int8}, labelnames)
     end
     return string_labels
 end
-
-# function load_split_indexes(path::String)
-#     df = CSV.read(joinpath(path, "split_indexes.csv"), DataFrame)
-#     train_ix = df.train_ix
-#     val_ix = df.val_ix[df.val_ix .!= -1]
-#     test_ix = df.test_ix[df.test_ix .!= -1]
-#     return train_ix, val_ix, test_ix
-# end
