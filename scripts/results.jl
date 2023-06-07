@@ -1,12 +1,8 @@
 using DrWatson
+using Cuckoo
 using Mill, Flux, DataFrames
 using Statistics
 using PrettyTables
-
-include(srcdir("dataset.jl"))
-include(srcdir("data.jl"))
-include(srcdir("constructors.jl"))
-include(srcdir("paths.jl"))
 
 if isempty(ARGS)
     model = "hmill_classifier_crossentropy"

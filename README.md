@@ -6,9 +6,13 @@ Repository for experiments with the Cuckoo dataset.
 
 ### Data and train/validation/test splits
 
-The data itself is saved at `/mnt/data/jsonlearning/Avast_cuckoo`. There are two versions of the dataset: small and full.
+The data is saved at `/mnt/data/jsonlearning/`. There are three datasets in the works, currently:
+- Cuckoo small (`Avast_cuckoo`)
+- Cuckoo full (`Avast_cuckoo_full`)
+- Garcia (`garcia`)
 
-The timesplits are currently saved in folder `/home/maskomic/projects/Cuckoo/data/timesplit`. They will be moved to a general folder once the repository is moved there as well.
+The timesplits are currently saved in folder
+```/mnt/data/jsonlearning/splits```
 
 ### Feature files
 
@@ -47,23 +51,37 @@ Name of the feature extractor is used to create a general folder. The next folde
 - `bson` file contains metadata: parameters of features, model, seeds etc.
 - `csv` file contains results: hash, ground truth, predicted labels, split names, and softmax output.
 
-## Label encoding
+**Encoding**
 
-Labels can be encoded to numerical values. The key is simple: sort unique labels alphabetically and assign numbers from 1 to 10:
-1. Adload
-2. Emotet
-3. HarHar
-4. Lokibot
-5. Qakbot
-6. Swisyn
-7. Trickbot
-8. Ursnif
-9. Zeus
-10. njRAT
+The saved files have certain encodings to make the saved CSVs smaller. First is the labels encoding, where labels are encoded into numerical values. The key is simple: sort unique labels alphabetically and assign numbers from 1 to 10 (for Cuckoo):
+- 1: Adload
+- 3: HarHar
+- 4: Lokibot
+- 2: Emotet
+- 5: Qakbot
+- 6: Swisyn
+- 7: Trickbot
+- 8: Ursnif
+- 9: Zeus
+- 10: njRAT
+
+Also, in the CSV files, the splits are saved directly (train/validation/test), so that evaluation is faster. Those are numerically encoded to Int8 values as well with a simple code
+- 0: train
+- 1: validation
+- 2: test
 
 ## Models
 
 Currently implemented:
-- Mill.jl multi-class classifier
-- standard classifier on Pedro's features
-- standard classifier on Vasek's features
+
+- feature model = HMIL
+    - classification model:
+        - neural network classifier
+- feature model = Pedro's features
+    - classification model:
+        - neural network classifier
+        - XGBoost
+- feature model = Vasek's features
+    - classification model:
+        - neural network classifier
+        - XGBoost

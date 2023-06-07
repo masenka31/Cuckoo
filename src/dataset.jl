@@ -42,14 +42,18 @@ struct Dataset
     name
 end
 
-function Dataset(data::String="cuckoo"; full=false)
-    if data == "cuckoo"
+Base.length(d::Dataset) = length(d.samples)
+
+function Dataset(data::String="cuckoo_small"; full=false)
+    if data in ["cuckoo_small", "cuckoo_full"]
         if full
             df = CSV.read("$cuckoo_full_path/public_labels.csv", DataFrame)
             sch = BSON.load(datadir("schema_full.bson"))[:schema]
             samples = Vector(df.sha256)
             files = joinpath.(cuckoo_full_path, "public_small_reports", string.(samples, ".json"))
         else
+            # TODO: fix
+            # currently loading just the small data and never the full version
             df = CSV.read("$cuckoo_path/public_labels.csv", DataFrame)
             sch = BSON.load(datadir("schema.bson"))[:schema]
             samples = Vector(df.sha256)
@@ -79,9 +83,13 @@ function Dataset(data::String="cuckoo"; full=false)
     )
 end
 
-function Base.getindex(d::Dataset, inds)
+function Base.getindex(d::Dataset, inds::Union{UnitRange, Colon, AbstractArray})
     data = load_samples(d; inds=inds)
     return indexinto(d, data, inds)
+end
+function Base.getindex(d::Dataset, idx::Int)
+    x = d[idx:idx]
+    return (x[1], x[2][1])
 end
 
 function indexinto(d::Dataset, data::AbstractMillNode, inds)

@@ -19,6 +19,6 @@ for rep in $(seq 1 1 $NUM_SAMPLES)
 do
     for seed in {1..5}
     do
-        sbatch ./dense_classifier.sh $SCRIPT $MODEL $FEATURES $seed $rep
+        sbatch ./feature_classifier.sh $SCRIPT $MODEL $FEATURES $seed $rep
     done
 done

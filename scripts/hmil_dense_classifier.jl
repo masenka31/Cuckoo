@@ -19,9 +19,10 @@ seed = parse(Int, ARGS[1])
 rep_start = parse(Int, ARGS[2])
 rep_end = parse(Int, ARGS[3])
 tr_ratio = "timesplit"
+dataset = "cuckoo_small"
 
 # load data and split into train/validation/test
-d = Dataset()
+d = Dataset(dataset)
 labels = d.family
 const labelnames = sort(unique(labels))
 
@@ -138,8 +139,8 @@ end
     @info "Results calculated."
 
     @info "Saving results..."
-    safesave(expdir("results", modelname, "dense_classifier", "timesplit", "$id.bson"), results_dict)
-    safesave(expdir("results", modelname, "dense_classifier", "timesplit", "$id.csv"), results_df)
+    safesave(expdir("results", dataset, modelname, "dense_classifier", "timesplit", "$id.bson"), results_dict)
+    safesave(expdir("results", dataset, modelname, "dense_classifier", "timesplit", "$id.csv"), results_df)
     @info "Results saved, experiment no. $rep finished."
 
 end
