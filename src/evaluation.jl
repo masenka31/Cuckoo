@@ -26,7 +26,7 @@ Loads the results based on the parameters. Does NOT do any aggregation of the re
 """
 function get_results(dataset::String="cuckoo_small", feature_model::String="hmil", end_model::String="dense_classifier")
     # get results bson files
-    results_dir = expdir("results", dataset, feature_model, end_model)
+    results_dir = expdir("results", dataset, feature_model, end_model) # results directory
     files = readdir(results_dir)
     ids = unique([x[1:end-5] for x in files if endswith(x, ".bson")])
 

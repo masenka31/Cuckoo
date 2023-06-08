@@ -60,17 +60,20 @@ function Dataset(data::String="cuckoo_small"; full=false)
             files = joinpath.(cuckoo_path, "public_small_reports", string.(samples, ".json"))
         end
         extractor = suggestextractor(sch)
+        family = String.(df.classification_family)
+        type = String.(df.classification_type)
+        date = Vector(df.date)
         
     elseif data == "garcia"
-        df = CSV.read("/mnt/data/jsonlearning/garcia_orig/reports/labels.csv", DataFrame)
-        files = df.samples
+        # df = CSV.read("/mnt/data/jsonlearning/garcia_orig/reports/labels.csv", DataFrame)
+        df = CSV.read("/mnt/data/jsonlearning/datasets/garcia/meta.csv", DataFrame)
+        files = map(x -> joinpath(garcia_path, x[1:2], x*".json"), df.sha256)
         sch = [] # not loading any schema, just saved extractor
         extractor = BSON.load(datadir("garcia_extractor.bson"))[:extractor]
+        family = String.(df.severity)
+        type = nothing
+        date = nothing
     end
-    
-    family = String.(df.classification_family)
-    type = String.(df.classification_type)
-    date = Vector(df.date)
 
     Dataset(
         files,
@@ -118,7 +121,7 @@ function load_samples(d::Dataset; inds = :)
     n = length(files)
     dicts = Vector{Union{ProductNode, Missing}}(missing, n)
 
-    if typeof(inds) == Colon || length(inds) > 128
+    if typeof(inds) == Colon || length(inds) > 32
         p = Progress(n; desc="Extracting JSONs: ")
         Threads.@threads for i in 1:n
             # in case the loading errors, returns only the samples it does not error on

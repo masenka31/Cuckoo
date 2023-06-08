@@ -9,7 +9,7 @@ function load_split(seed, ratio = "timesplit")
     if ratio == "timesplit"
         split_df = CSV.read("/mnt/data/jsonlearning/splits/timesplit/split_$(seed).csv", DataFrame)
     elseif ratio == "garcia"
-        split_df = CSV.read(splitsdir("garcia/0$(seed)_split.csv"), DataFrame)
+        split_df = CSV.read(splitsdir("garcia_split/split_$(seed).csv"), DataFrame)
     else
         error("""Ratio must be either
         - \"timesplit\" for timesplit on Brano Cuckoo or
@@ -34,8 +34,9 @@ function read_labels_file(dataset::String)
         rename!(labels_df, :sha256 => :hash, :classification_family => :label)
         return labels_df[!, [:hash, :label]]
     elseif dataset == "garcia"
-        labels_df = nothing
-        return labels_df
+        labels_df = CSV.read("/mnt/data/jsonlearning/datasets/garcia/meta.csv", DataFrame)
+        rename!(labels_df, :sha256 => :hash, :severity => :label)
+        return labels_df[!, [:hash, :label]]
     end
 end
 
@@ -89,11 +90,7 @@ function load_indexes(d::Dataset; seed::Int=1, ratio="garcia")
     split_df = load_split(seed, ratio)
 
     # export the hash to map dataframes together
-    if d.name == "cuckoo"
-        hash = map(x -> x[end-68:end-5], d.samples)
-    elseif d.name == "garcia"
-        hash = d.samples
-    end
+    hash = map(x -> x[end-68:end-5], d.samples)
 
     # prepare dataset for merge
     data_df = DataFrame(
@@ -119,12 +116,8 @@ function load_split_indexes(d::Dataset; seed::Int = 1, ratio = "timesplit")
     split_df = load_split(seed, ratio)
 
     # export the hash to map dataframes together
-    if d.name == "cuckoo"
-        hash = map(x -> x[end-68:end-5], d.samples)
-    elseif d.name == "garcia"
-        hash = d.samples
-    end
-
+    hash = map(x -> x[end-68:end-5], d.samples)
+    
     # prepare dataset for merge
     data_df = DataFrame(
         :i => 1:length(d.family),

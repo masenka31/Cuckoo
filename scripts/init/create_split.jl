@@ -7,7 +7,7 @@ using DataFrames
 using Random
 
 # load data and labels
-d = Dataset("cuckoo", full=false)
+d = Dataset("cuckoo_small")
 labels = d.family
 const labelnames = sort(unique(labels))
 

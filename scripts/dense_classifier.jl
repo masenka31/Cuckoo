@@ -7,7 +7,7 @@ using DataFrames
 
 # get the passed arguments
 modelname = ARGS[1] # modelname = "pedro"
-feature_file = ARGS[2] # feature_file = "/mnt/data/jsonlearning/experiments/cuckoo_small/combined.csv"
+feature_file = ARGS[2] # feature_file = "/mnt/data/jsonlearning/experiments_old/cuckoo_small/combined.csv"
 seed = parse(Int, ARGS[3]) # seed = 1
 rep = parse(Int, ARGS[4]) # rep = 1
 ratio = "timesplit"
