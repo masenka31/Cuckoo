@@ -1,8 +1,7 @@
 #!/bin/bash
 #SBATCH --time=1:00:00
 #SBATCH --partition=cpufast
-#SBATCH --nodes=1 --ntasks-per-node=2 --cpus-per-task=1
-#SBATCH --mem=8G
+#SBATCH --mem=4G
 
 # provide the full path to feature file
 SCRIPT=$1
@@ -12,7 +11,7 @@ SEED=$4
 REP=$5
 
 # module load Julia
-module load Julia/1.7.3-linux-x86_64
+module load Julia/1.8.5-linux-x86_64
 
 # run from the scripts directory only!
-julia --project ./$SCRIPT.jl $MODEL $FEATURES $SEED $REP
+julia --project ./${SCRIPT}.jl $MODEL $FEATURES $SEED $REP

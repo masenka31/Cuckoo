@@ -6,12 +6,8 @@ using StatsBase
 using DataFrames
 using Random
 
-# include(srcdir("dataset.jl"))
-# include(srcdir("data.jl"))
-# include(srcdir("constructors.jl"))
-
 # load data and labels
-d = Dataset("cuckoo", full=false)
+d = Dataset("cuckoo_small")
 labels = d.family
 const labelnames = sort(unique(labels))
 

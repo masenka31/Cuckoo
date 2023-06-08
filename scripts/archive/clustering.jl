@@ -31,7 +31,7 @@ enc = model[1](Xtrain)
 
 function load_features()
     df = CSV.read()
-
+end
 
 
 using Clustering, Distances
@@ -106,4 +106,5 @@ embedding = umap(enc, 2, n_neighbors=30)
 
 include(srcdir("plotting.jl"))
 
-scatter2(embedding, zcolor=l, markerstrokewidth=0, ms=2, color=:jet)#xlims=(-30,30), ylims=(-30,30))
+scatter2(embedding, zcolor=l, markerstrokewidth=0, ms=2, color=:jet)
+
