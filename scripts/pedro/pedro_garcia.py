@@ -21,37 +21,38 @@ import time
 import numpy as np
 from joblib import Parallel, delayed
 import sys
-#--------------- N E T W O R K ---------------------------
+# ------------------------------ N E T W O R K ------------------------------
 print("----------------TRY----------------")
+
 class Network(Struct):
     network: dict
-    
+
+# Test if the results are the same - the structures mightno tb e needed?
 def net(dictionary, feature):
     try:
         with open(dictionary, "r") as f:
-             data = f.read()
-             byte_data = (bytes(data, 'utf-8'))
-             jsn = msgspec.json.decode(byte_data, type=Network)
-             for key in jsn.network:
-                 if key == feature:
-                     return len(jsn.network[feature])
+            data = f.read()
+            byte_data = (bytes(data, 'utf-8'))
+            jsn = msgspec.json.decode(byte_data, type=Network)
+            for key in jsn.network:
+                if key == feature:
+                    return len(jsn.network[feature])
     except:
         return 0
 
 network_names = ["icmp", "tcp", "udp", "http"]
 
-     
+
 def network_calls(dictionary):
     net_vector = []
     for name in network_names:
         net_vector.append(net(dictionary, name))
     return net_vector
-        
-#network_full = network_calls(r"C:/Users/T pro/Desktop/ffe7f8921b0d42d3014c972c33460ec0f6565e4ce0bb8bd04df4a6d635c7903d.json")
 
-#--------------------------S T A T I C -------------------------
+# ------------------------------ S T A T I C ------------------------------
 class PE(Struct):
     pe: dict
+
 class Static(Struct):
     static: PE
 
@@ -60,13 +61,11 @@ def stat_pe(dictionary, feature):
          data = f.read()
          byte_data = (bytes(data, 'utf-8'))
          try: 
-             print('yes')
              jsn = msgspec.json.decode(byte_data, type=Static)
              for key in jsn.static:
                  if key == feature:
                      return len(jsn.static[feature])
          except:
-            print('no')
             return 0
 
 static_names = ["pe_sections", "pe_exports", "pe_resources"]
@@ -77,100 +76,111 @@ def static_calls(dictionary):
         static_vector.append(stat_pe(dictionary, name))
     return static_vector
 
-#static_full = static_calls(r"C:/Users/T pro/Desktop/ffe7f8921b0d42d3014c972c33460ec0f6565e4ce0bb8bd04df4a6d635c7903d.json")
+# static_calls("reports/report.json")
 
+# ------------------------------ B E H A V I O U R ------------------------------
 
-#------------------------------ B E H A V I O U R -----------------
-class Behavior(Struct):
-    behavior: dict
-def behav_calls(dictionary):
-    with open(dictionary, "r") as f:
-         data = f.read()
-         byte_data = (bytes(data, 'utf-8'))
-         try: 
-             jsn = msgspec.json.decode(byte_data, type=Behavior)
-             return len(jsn.behavior["processes"])
-         except:
-            return 0
-
-#behavior_full = behav_calls(r"C:/Users/T pro/Desktop/ffe7f8921b0d42d3014c972c33460ec0f6565e4ce0bb8bd04df4a6d635c7903d.json")
-
-#------------------------- D R O P P E D -------------------------
-class Dropped(Struct):
-    dropped: dict
-def dropped_calls(dictionary):
-    with open(dictionary, "r") as f:
-         data = f.read()
-         byte_data = (bytes(data, 'utf-8'))
-         try: 
-             jsn = msgspec.json.decode(byte_data, type=Dropped)
-             return len(jsn.behavior)
-         except:
-            return 0
-
-#dropped_full = dropped_calls(r"C:/Users/T pro/Desktop/ffe7f8921b0d42d3014c972c33460ec0f6565e4ce0bb8bd04df4a6d635c7903d.json")
-
-#-------------------------- R E G I S T R Y  K E Y S ----------------------
-
-class Enhanced(Struct):
-    enhanced: list
-class BehaviorReg(Struct):
-    behavior: Enhanced
-    
-def registry_finder(dictionary, feature):
-    counter = 0
-    with open(dictionary, "r") as f:
-         data = f.read()
-         byte_data = (bytes(data, 'utf-8'))
-         jsn = msgspec.json.decode(byte_data, type=BehaviorReg)
-         while counter < len(jsn.behavior.enhanced):
-             if jsn.behavior.enhanced[counter]['object'] == "registry":
-                 if feature in jsn.behavior.enhanced[counter]["data"]["regkey"]:
-                     return 1
-             counter += 1
-    return 0
-
-reg_names = ["Cryptography", "IEData", "Tcpip", "Dnscache", "DockingState", "CustomLocale", "SafeBoot", "Nls\\Sorting", "SystemInformation", "Persistence" ]
-         
-def registry_calls(dictionary):
-    reg_vector = []
-    for name in reg_names:
-        reg_vector.append(registry_finder(dictionary, name))
-    return reg_vector
-#registry_full = registry_calls(r"C:/Users/T pro/Desktop/ffe7f8921b0d42d3014c972c33460ec0f6565e4ce0bb8bd04df4a6d635c7903d.json")
-    
-    
-    
-    
-    
-    
-    
-    
-
-
-# ----------------------- DEFINITION API CALLS--------------------
 class Processes(Struct):
     processes: list
 
 class Behavior(Struct):
     behavior: Processes
+
+
+def behav_calls(dictionary):
+    with open(dictionary, "r") as f:
+        data = f.read()
+        byte_data = (bytes(data, 'utf-8'))
+        try: 
+            jsn = msgspec.json.decode(byte_data, type=Behavior)
+            return len(jsn.behavior.processes)
+        except:
+            print('xxx')
+            return 0
+
+# behav_calls("reports/report2.json")
+
+# ------------------------------ D R O P P E D ------------------------------
+
+class Dropped(Struct):
+    dropped: list
+
+
+def dropped_calls(dictionary):
+    with open(dictionary, "r") as f:
+        data = f.read()
+        byte_data = (bytes(data, 'utf-8'))
+        try: 
+            jsn = msgspec.json.decode(byte_data, type=Dropped)
+            return len(jsn.dropped)
+        except:
+            return 0
+
+# dropped_calls("reports/report4.json")
+
+# ------------------------------ R E G I S T R Y  K E Y S ------------------------------
+
+reg_keys = ["regkey_deleted", "regkey_opened", "regkey_read", "regkey_written"]
+reg_names = ["Cryptography", "IEData", "Tcpip", "Dnscache", "DockingState", "CustomLocale", "SafeBoot", "Nls\\Sorting", "SystemInformation", "Persistence" ]
+
+class Summary(Struct):
+    summary: dict
+
+class SummaryBehavior(Struct):
+    behavior: Summary
+
+def registry_finder(dictionary, feature):
+    with open(dictionary, "r") as f:
+        data = f.read()
+        byte_data = (bytes(data, 'utf-8'))
+        try:
+            jsn = msgspec.json.decode(byte_data, type=SummaryBehavior)
+        except:
+            return 0
+        
+        jsn = msgspec.json.decode(byte_data, type=SummaryBehavior)
+        for regkey in reg_keys:
+            if regkey in jsn.behavior.summary.keys():
+                for x in jsn.behavior.summary[regkey]:
+                    if feature in x:
+                        return 1
     
+    return 0
+
+def registry_calls(dictionary):
+    reg_vector = []
+    for name in reg_names:
+        reg_vector.append(registry_finder(dictionary, name))
+    return reg_vector
+
+# registry_calls("reports/report.json")
+
+# dictionary = "reports/report2.json"
+# with open(dictionary, "r") as f:
+#     data = f.read()
+#     byte_data = bytes(data, 'utf-8')
+    
+#     try:
+#         jsn = msgspec.json.decode(byte_data, type=SummaryBehavior)
+#     except:
+#         print(0)
+    # behavior = msgspec.json.decode(byte_data, type=SummaryBehavior)
+
+# ------------------------------ DEFINITION API CALLS ------------------------------
 
 api_names = ["NtDelayExecution", "NtCreateFile", "NtFreeVirtualMemory", "HttpOpenRequestA", "NtOpenFile", "Socket", "CryptDecodeObjectEx", "OpenSCManagerA", "CryptGenKey", "CryptAcquireContextA", "NtAllocateVirtualMemory", "bind", "closesocket", "NtCreateMutant", "DeviceIoControl", "GetSystemTimeAsFileTime", "HttpSendRequestA", "NtMapViewOfSection", "NtOpenMutant", "NtProtectVirtualMemory", "NtWriteFile", "CreateToolhelp32Snapshot", "CreateRemoteThread", "NtDuplicateObject", "NtQueryInformationFile", "InternetReadFile", "CryptCreateHash", "CryptHashData", "CheckCursorPos", "CryptExportKey"]
 
-
-    
-    
 def api_calls(dictionary, feature):
-    counter = 0
     with open(dictionary, "r") as f:
-         data = f.read()
-         byte_data = (bytes(data, 'utf-8'))
-         calls = msgspec.json.decode(byte_data, type=Behavior)
-         for call in calls.behavior.processes:
-             for c in call['calls']:
-                 if c['api'] == feature:
-                     counter += 1
+        counter = 0
+        data = f.read()
+        byte_data = (bytes(data, 'utf-8'))
+        calls = msgspec.json.decode(byte_data, type=Behavior)
+        for call in calls.behavior.processes:
+            for c in call['calls']:
+                if c['api'] == feature:
+                    counter += 1
+      
     return counter
 
 def api_vector(dictionary):
@@ -179,44 +189,72 @@ def api_vector(dictionary):
         api_vec.append(api_calls(dictionary, name))
     return api_vec
 
-# ----------------------------------------------------------------------------#
+# dictionary = "reports/report.json"
+# api_vector(dictionary)
 
-
+# ------------------------------ feature calculation ------------------------------
 
 def vector_file(dictionary):
-    path = dictionary.path
     file_vector = []
-    file_vector =  [path[61:-5]] + (network_calls(dictionary)) + (static_calls(dictionary)) + (registry_calls(dictionary)) + (api_vector(dictionary))
+    file_vector =  [dictionary[-69:-5]] + (network_calls(dictionary)) + (static_calls(dictionary)) + (registry_calls(dictionary)) + (api_vector(dictionary))
     file_vector.append(behav_calls(dictionary))
     file_vector.append(dropped_calls(dictionary))
     return file_vector
 
+import os
 
-def input_vector(folder, start, end):
+# def list_report_files(root_path):
+#     report_files = []
+#     for folder_name in ['malicious', 'benign']:
+#         folder_path = os.path.join(root_path, folder_name)
+#         for i in range(10):
+#             subfolder_path = os.path.join(folder_path, str(i))
+#             if not os.path.exists(subfolder_path):
+#                 continue
+#             for j in range(1000):
+#                 file_path = os.path.join(subfolder_path, str(j), 'report.json')
+#                 if os.path.isfile(file_path):
+#                     report_files.append(file_path)
+#     return report_files
+
+def list_report_files(root_path):
+    report_files = []
+    folders = os.listdir(root_path)
+    for folder in folders:
+        files = os.listdir(os.path.join(root_path, folder))
+        for file in files:
+            if file.endswith('json'):
+                report_files.append(os.path.join(root_path, folder, file))
+                
+    return report_files
+
+
+
+root_path = "/mnt/data/jsonlearning/datasets/garcia/reports"
+
+# files = list_report_files(root_path)
+# for file_path in files:
+#     print(file_path)
+
+def input_vector(root_path, start, end):
+    files = list_report_files(root_path)
+    chosen_files = files[start:end]
     full_input = []
-
-    counter = 0
-    files = os.scandir(folder)
-    for file in files:
-        if (counter >= start) and (counter <= end):
+    
+    for file in chosen_files:
+        try:
             full_input.append(vector_file(file))
-        counter = counter + 1
-
+        except:
+            pass
+    
     return full_input
 
 # folder = r"/mnt/data/jsonlearning/Avast_cuckoo_full/public_full_reports"
-folder = r"reports"
-folder2 = r"results"
+# folder = r"reports"
 
-all_input =  input_vector(folder, int(sys.argv[1]), int(sys.argv[2]))
+all_input =  input_vector(root_path, int(sys.argv[1]), int(sys.argv[2]))
 
-np.savetxt(f'input_{sys.argv[1]}_{sys.argv[2]}.csv', 
+np.savetxt(f'files/input_{sys.argv[1]}_{sys.argv[2]}.csv', 
            all_input,
            delimiter =", ", 
            fmt ='% s')
-
-
-# =============================================================================
-# print("It took: {0} s".format(end - start))
-# print("The whole bunch would take: {0} hours".format((end - start) * (50000/len(all_input)) / 3600))
-# =============================================================================

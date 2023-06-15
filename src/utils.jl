@@ -72,17 +72,15 @@ function load_split_features(dataset::String, feature_file::String; seed::Int=1,
     test = filter(:split => x -> x == "test", df)[:, 2:end]
 
     # and hashes
-    hash = vcat(
-        filter(:split => x -> x == "train", df).hash,
-        filter(:split => x -> x == "validation", df).hash,
-        filter(:split => x -> x == "test", df).hash
-    )
+    train_h = filter(:split => x -> x == "train", df).hash
+    val_h = filter(:split => x -> x == "validation", df).hash
+    test_h = filter(:split => x -> x == "test", df).hash
 
     # returns a 3tuple of tuples: data matrix, labels, hash
     return (
-        train[:, 1:end-3] |> Array |> transpose |> collect, train.label, filter(:split => x -> x == "train", df).hash,
-        validation[:, 1:end-3] |> Array |> transpose |> collect, validation.label, filter(:split => x -> x == "validation", df).hash,
-        test[:, 1:end-3] |> Array |> transpose |> collect, test.label, filter(:split => x -> x == "test", df).hash
+        train[:, 1:end-3] |> Array |> transpose |> collect, train.label, train_h,
+        validation[:, 1:end-3] |> Array |> transpose |> collect, validation.label, val_h,
+        test[:, 1:end-3] |> Array |> transpose |> collect, test.label, test_h
     )
 end
 
@@ -216,6 +214,24 @@ function cuckoo_int_to_hash(df)
     labels_df.int_hash = UInt16.(collect(1:nrow(labels_df)))
     rename!(labels_df, :sha256 => :hash)
     labels_df = labels_df[!, Not([:classification_family, :classification_type, :date])]
+
+    innerjoin(df, labels_df, on=:int_hash)[!, Not([:int_hash])]
+end
+
+function garcia_hash_to_int(df)
+    labels_df = CSV.read("/mnt/data/jsonlearning/datasets/garcia/meta.csv", DataFrame)
+    labels_df.int_hash = UInt16.(collect(1:nrow(labels_df)))
+    rename!(labels_df, :sha256 => :hash)
+    labels_df = labels_df[!, Not([:severity, :split])]
+
+    innerjoin(df, labels_df, on=:hash)[!, Not([:hash])]
+end
+
+function garcia_int_to_hash(df)
+    labels_df = CSV.read("/mnt/data/jsonlearning/datasets/garcia/meta.csv", DataFrame)
+    labels_df.int_hash = UInt16.(collect(1:nrow(labels_df)))
+    rename!(labels_df, :sha256 => :hash)
+    labels_df = labels_df[!, Not([:severity, :split])]
 
     innerjoin(df, labels_df, on=:int_hash)[!, Not([:int_hash])]
 end

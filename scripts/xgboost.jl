@@ -24,13 +24,16 @@ const labelnames = sort(unique(tr_l))
 # prepare data for XGBoost
 
 X = collect(tr_x')
-y = encode_labels(tr_l, labelnames)
+# y = encode_labels(tr_l, labelnames)
+y = tr_l .== labelnames[2]
 
 Xval = collect(val_x')
-yval = encode_labels(val_l, labelnames)
+# yval = encode_labels(val_l, labelnames)
+yval = val_l .== labelnames[2]
 
 Xtest = collect(test_x')
-ytest = encode_labels(test_l, labelnames)
+# ytest = encode_labels(test_l, labelnames)
+ytest = test_l .== labelnames[2]
 
 num_class = length(labelnames) + 1
 
@@ -54,13 +57,15 @@ p = sample_params(rep)
 model = xgboost(
     (X, y), num_round=500,
     max_depth=p.max_depth, eta=p.eta, min_child_weight=p.min_child_weight, subsample=p.subsample,
-    num_class=num_class,
-    objective="multi:softmax"
+    # num_class=num_class,
+    objective="binary:logistic"
 )
 
-ypred = XGBoost.predict(model, Xval)
+# ypred = XGBoost.predict(model, Xval)
+ypred = XGBoost.predict(model, Xval) .> 0.5
 av = mean(ypred .== yval)
-ypred = XGBoost.predict(model, Xtest)
+# ypred = XGBoost.predict(model, Xtest)
+ypred = XGBoost.predict(model, Xtest) .> 0.5
 at = mean(ypred .== ytest)
 println("Val accuracy: $(round(av, digits=4))")
 println("Test accuracy: $(round(at, digits=4))")

@@ -94,7 +94,7 @@ end
     start_time = time()
     while time() - start_time < max_train_time
         # batches = map(_ -> minibatch(tr_x, tr_l), 1:5);
-        batches = map(_ -> minibatch(d, train_ix), 1:5);
+        batches = map(_ -> minibatch(d, train_ix, batchsize=parameters.batchsize), 1:5);
         Flux.train!(loss, Flux.params(full_model), batches, opt)
         batch_loss = mean(x -> loss(x...), batches)
         @info "batch loss = $(round(batch_loss, digits=3))"
