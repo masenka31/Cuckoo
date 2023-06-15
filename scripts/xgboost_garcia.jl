@@ -5,10 +5,17 @@ using Statistics, StatsBase
 using DataFrames
 
 # get the passed arguments
-modelname = ARGS[1] # modelname = "pedro"
-feature_file = ARGS[2] # feature_file = "/mnt/data/jsonlearning/experiments_old/cuckoo_small/combined.csv"
-seed = parse(Int, ARGS[3]) # seed = 1
-rep = parse(Int, ARGS[4]) # rep = 1
+if isempty(ARGS)
+    modelname = "pedro"
+    feature_file = "/mnt/data/jsonlearning/experiments/feature_vectors/pedro_garcia.csv"
+    seed = 1
+    rep = 1
+else
+    modelname = ARGS[1] # modelname = "pedro"
+    feature_file = ARGS[2] # feature_file = "/mnt/data/jsonlearning/experiments/feature_vectors/pedro_garcia.csv"
+    seed = parse(Int, ARGS[3]) # seed = 1
+    rep = parse(Int, ARGS[4]) # rep = 1
+end
 dataset = "garcia"
 
 # load labels file, merge tables and get train/validation/split
