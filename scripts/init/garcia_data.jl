@@ -48,6 +48,10 @@ delete!(extract_data[:static].dict, :pdf)
 delete!(extract_data[:static].dict, :pdb_path)
 delete!(extract_data[:static].dict, :peid_signatures)
 
+### Delete timestamp, since it is the biggest indicator!
+# delete!(extract_data[:static].dict, :pe_timestamp)
+safesave(datadir("garcia_extractor_wo_timestamp.bson"), Dict(:extractor => extract_data))
+
 # save the prepared extractor
 safesave(datadir("garcia_extractor.bson"), Dict(:extractor => extract_data))
 

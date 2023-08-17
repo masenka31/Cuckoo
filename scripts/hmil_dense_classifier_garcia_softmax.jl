@@ -43,16 +43,17 @@ function minibatch(d::Dataset, train_ix; batchsize=64, labelnames=labelnames)
     elseif length(tmp) == 3
         x, y, m = tmp
     end
-    ybool = y .== labelnames[2] # 1 if label is malicious
-    return (x, ybool')
+    # ybool = y .== labelnames[2] # 1 if label is malicious
+    yoh = Flux.onehotbatch(y, labelnames)
+    return (x, yoh)
 end
 
-function minibatch(X::ProductNode, y; batchsize=64)
+function minibatch(X::ProductNode, y; batchsize=64, labelnames=labelnames)
     ix = sample(1:length(y), batchsize)
-    labelnames = sort(unique(y))
     x, y = X[ix], y[ix]
-    ybool = y .== labelnames[2]
-    return (x, ybool')
+    yoh = Flux.onehotbatch(y, labelnames)
+    # ybool = y .== labelnames[2]
+    return (x, yoh)
 end
 
 using Random
@@ -76,12 +77,12 @@ end
     parameters = sample_params(rep)
 
     # loss and accuracy
-    loss(X, y) = Flux.logitbinarycrossentropy(full_model(X), y)
+    loss(X, y) = Flux.logitcrossentropy(full_model(X), y)
     accuracy(y1::Vector{T}, y2::Vector{T}) where T = mean(y1 .== y2)
 
     # create the model
     xtr, ytr = minibatch(d, train_ix, batchsize=2)
-    full_model = hmil_classifier_constructor(xtr; parameters..., odim=1);
+    full_model = hmil_classifier_constructor(xtr; parameters..., odim=2);
     mill_model = full_model[1];
 
     # initialize optimizer
@@ -154,7 +155,7 @@ end
                 probabilities[i] = missing
             elseif typeof(tmp[1]) <: ProductNode
                 pn = tmp[1]
-                proba = sigmoid(full_model(pn)[1])
+                proba = softmax(full_model(pn))[2]
                 probabilities[i] = proba            # get the probability distribution
                 labelvec[i] = round(Int8, proba)    # get the predicted label based on threshold 0.5
             else
@@ -202,8 +203,8 @@ end
     @info "Results calculated."
 
     @info "Saving results..."
-    safesave(expdir("results", "garcia", modelname, "dense_classifier", "$id.bson"), results_dict)
-    safesave(expdir("results", "garcia", modelname, "dense_classifier", "$id.csv"), results_df)
+    safesave(expdir("results", "garcia", modelname * "_ts", "dense_classifier", "$id.bson"), results_dict)
+    safesave(expdir("results", "garcia", modelname * "_ts", "dense_classifier", "$id.csv"), results_df)
     @info "Results saved, experiment no. $rep finished."
 
 end

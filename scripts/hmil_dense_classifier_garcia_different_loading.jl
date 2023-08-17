@@ -13,6 +13,26 @@ using DataFrames
 using Flux
 using UUIDs
 using ProgressMeter
+using JLD2
+
+function garcia_index_mapping(indexes, bit_index)
+    full_index = collect(1:19997)
+    index_mask = map(x -> in(x, indexes), full_index)
+
+    missing_index = Int[]
+    k = 1
+    for i in 1:19997
+        if bit_index[i]
+            push!(missing_index, k)
+            k += 1
+        else
+            push!(missing_index, 0)
+        end
+    end
+
+    # sort(countmap(missing_index[index_mask]))
+    return filter(x -> x != 0, missing_index[index_mask]), missing_index[index_mask] .!= 0
+end
 
 # get the passed arguments
 modelname = "hmil"
@@ -20,6 +40,7 @@ if length(ARGS) == 0
     seed = 1
     rep_start = 1
     rep_end = 1
+    rep = 1
 else
     seed = parse(Int, ARGS[1])
     rep_start = parse(Int, ARGS[2])
@@ -32,25 +53,53 @@ d = Dataset("garcia")
 labels = d.family
 const labelnames = sort(unique(labels))
 
-# load only indexes of the data (loading all samples might take too much time)
-train_ix, val_ix, test_ix, train_h, val_h, test_h = load_indexes(d, seed=seed)
+# load only indexes of the data
+_train_ix, _val_ix, _test_ix, train_h, val_h, test_h = load_indexes(d, seed=seed)
 
-function minibatch(d::Dataset, train_ix; batchsize=64, labelnames=labelnames)
-    ix = sample(train_ix, batchsize)
-    tmp = d[ix]
-    if length(tmp) == 2
-        x, y = tmp
-    elseif length(tmp) == 3
-        x, y, m = tmp
-    end
-    ybool = y .== labelnames[2] # 1 if label is malicious
-    return (x, ybool')
-end
+@info "Indexes loaded."
+
+# load saved data
+dt = load_object(projectdir("garcia_productnodes.jld2"))
+data, labels, bit_index = dt
+
+# prepare the indexes without the unparsed samples
+train_ix, train_mask = garcia_index_mapping(_train_ix, bit_index)
+train_h = train_h[train_mask]
+val_ix, val_mask = garcia_index_mapping(_val_ix, bit_index)
+val_h = val_h[val_mask]
+test_ix, test_mask = garcia_index_mapping(_test_ix, bit_index)
+test_h = test_h[test_mask]
+
+@info "Indexes mapped."
+
+# get training, validation and test data
+# @time test_data = catobs([data[ix] for ix in test_ix]);
+test_l = (labels[test_ix] .== labelnames[2])';
+
+@info "Test data prepared."
+
+# @time train_data = catobs([data[ix] for ix in train_ix]);
+train_l = (labels[train_ix] .== labelnames[2])';
+
+@info "Train data prepared."
+
+# @time val_data = catobs([data[ix] for ix in val_ix]);
+val_l = (labels[val_ix] .== labelnames[2])';
+
+@info "Validation data prepared."
 
 function minibatch(X::ProductNode, y; batchsize=64)
     ix = sample(1:length(y), batchsize)
     labelnames = sort(unique(y))
     x, y = X[ix], y[ix]
+    ybool = y .== labelnames[2]
+    return (x, ybool')
+end
+function minibatch(data::ProductNode, labels, indexes; batchsize=64)
+    ixs = sample(indexes, batchsize)
+    labelnames = sort(unique(labels))
+    x = catobs([data[ix] for ix in ixs])
+    y = labels[ixs]
     ybool = y .== labelnames[2]
     return (x, ybool')
 end
@@ -80,8 +129,10 @@ end
     accuracy(y1::Vector{T}, y2::Vector{T}) where T = mean(y1 .== y2)
 
     # create the model
-    xtr, ytr = minibatch(d, train_ix, batchsize=2)
-    full_model = hmil_classifier_constructor(xtr; parameters..., odim=1);
+    # xtr, ytr = minibatch(d, train_ix, batchsize=2)
+    # xtr, ytr = minibatch(train_data, train_l, batchsize=parameters.batchsize)
+    xtr, ytr = minibatch(data, labels, train_ix, batchsize=parameters.batchsize)
+    full_model = hmil_classifier_constructor(data; parameters..., odim=1);
     mill_model = full_model[1];
 
     # initialize optimizer
@@ -92,38 +143,40 @@ end
     # train the model for 15 minutes
     Flux.trainmode!(full_model);
     Flux.train!(loss, Flux.params(full_model), [(xtr, ytr)], opt)
-    max_train_time = 60*120 # 2 hours of training time
+    max_train_time = 120#*120 # 2 hours of training time
     
     check_ix = 0
     best_val_loss = Inf
-    best_model = deepcopy(full_model);
-    @time val_batches = map(_ -> minibatch(d, val_ix, batchsize=parameters.batchsize), 1:20);
+    best_model = deepcopy(full_model)
     start_time = time()
+
+    val_batches = map(_ -> minibatch(data, labels, val_ix, batchsize=parameters.batchsize), 1:10);
 
     while time() - start_time < max_train_time
         # batches = map(_ -> minibatch(tr_x, tr_l), 1:5);
-        batches = map(_ -> minibatch(d, train_ix, batchsize=parameters.batchsize), 1:5);
+        batches = map(_ -> minibatch(data, labels, train_ix, batchsize=parameters.batchsize), 1:5);
         Flux.train!(loss, Flux.params(full_model), batches, opt)
         # batch_loss = mean(x -> loss(x...), batches)
-        
-        @time val_batch_loss = mean(x -> loss(x...), val_batches)
-        @info "batch loss = $(round(val_batch_loss, digits=3))"
+        # @info "batch loss = $(round(batch_loss, digits=3))"
 
-        if val_batch_loss < best_val_loss
+        # val_loss = loss(val_data, val_l)
+        val_loss = mean(batch -> loss(batch...), val_batches)
+        @info "val_loss = $val_loss"
+        if val_loss < best_val_loss
             # if validation loss gets better, save the best model
-            best_val_loss = val_batch_loss
-            best_model = deepcopy(full_model);
+            best_val_loss = val_loss
+            best_model = deepcopy(full_model)
         end
     end
 
     # get only the best model of all
-    full_model = deepcopy(best_model);
+    full_model = deepcopy(best_model)
 
     ######################
     ### Saving results ###
     ######################
 
-    Flux.testmode!(full_model);
+    Flux.testmode!(full_model)
 
     id = "$(uuid1())"   # generate unique uuid to save data in two files - one contains metadata, the other contains the predictions
 
@@ -139,49 +192,44 @@ end
 
     results_dict = merge(par_dict, info_dict)
 
-    function predict_labels(indexes)
-        # preallocate the vectors
-        n = length(indexes)
-        labelvec = zeros(Union{Int8, Missing}, n) # label predictions
-        probabilities = zeros(Union{Float32, Missing}, n)
-
-        p = Progress(n; desc="Calculating labels and probabilities:")
-        Threads.@threads for i in 1:n
-            ix = indexes[i]
-            tmp = d[ix:ix]
-            if isnothing(tmp)
-                labelvec[i] = missing
-                probabilities[i] = missing
-            elseif typeof(tmp[1]) <: ProductNode
-                pn = tmp[1]
-                proba = sigmoid(full_model(pn)[1])
-                probabilities[i] = proba            # get the probability distribution
-                labelvec[i] = round(Int8, proba)    # get the predicted label based on threshold 0.5
-            else
-                @error "Something went wrong."
-            end
-            next!(p)
-        end
-        return labelvec, probabilities
+    # predictions of the model
+    # @time tr_pred_labels = full_model(train_data) .> 0.5
+    # @time val_pred_labels = full_model(val_data) .> 0.5
+    # @time ts_pred_labels = full_model(test_data) .> 0.5
+    
+    tr_pred_labels = zeros(Float32, length(train_ix))
+    for (i, ix) in enumerate(train_ix)
+        x = data[ix]
+        prob = sigmoid(full_model(x)[1])
+        tr_pred_labels[i] = prob > 0.5
     end
 
-    @time tr_pred_labels, tr_pred_probabilities = predict_labels(train_ix)
-    @time val_pred_labels, val_pred_probabilities = predict_labels(val_ix)
-    @time ts_pred_labels, ts_pred_probabilities = predict_labels(test_ix)
+    val_pred_labels = zeros(Float32, length(val_ix))
+    for (i, ix) in enumerate(val_ix)
+        x = data[ix]
+        prob = sigmoid(full_model(x)[1])
+        val_pred_labels[i] = prob > 0.5
+    end
 
-    # predictions of the model
+    ts_pred_labels = zeros(Float32, length(test_ix))
+    for (i, ix) in enumerate(test_ix)
+        x = data[ix]
+        prob = sigmoid(full_model(x)[1])
+        ts_pred_labels[i] = prob > 0.5
+    end
+
     results_df = DataFrame(
         :hash => vcat(train_h, val_h, test_h),
         :ground_truth => vcat(
-            encode_labels(d.family[train_ix], labelnames),
-            encode_labels(d.family[val_ix], labelnames),
-            encode_labels(d.family[test_ix], labelnames)
+            encode_labels(labels[train_ix], labelnames),
+            encode_labels(labels[val_ix], labelnames),
+            encode_labels(labels[test_ix], labelnames)
         ),
         :predicted => vcat(
             tr_pred_labels .+ 1,
             val_pred_labels .+ 1,
             ts_pred_labels .+ 1
-        ),
+        )[:],
         :split => vcat(
             repeat([0], length(train_h)),
             repeat([1], length(val_h)),
@@ -202,7 +250,7 @@ end
     @info "Results calculated."
 
     @info "Saving results..."
-    safesave(expdir("results", "garcia", modelname, "dense_classifier", "$id.bson"), results_dict)
+    safesave(expdir("results","garcia", modelname, "dense_classifier", "$id.bson"), results_dict)
     safesave(expdir("results", "garcia", modelname, "dense_classifier", "$id.csv"), results_df)
     @info "Results saved, experiment no. $rep finished."
 

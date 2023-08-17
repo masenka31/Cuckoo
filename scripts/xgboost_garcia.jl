@@ -5,18 +5,24 @@ using Statistics, StatsBase
 using DataFrames
 
 # get the passed arguments
-modelname = ARGS[1] # modelname = "pedro"
-feature_file = ARGS[2] # feature_file = "/mnt/data/jsonlearning/experiments_old/cuckoo_small/combined.csv"
-seed = parse(Int, ARGS[3]) # seed = 1
-rep = parse(Int, ARGS[4]) # rep = 1
-ratio = "timesplit"
-dataset = "cuckoo"
+if isempty(ARGS)
+    modelname = "pedro"
+    feature_file = "/mnt/data/jsonlearning/experiments/feature_vectors/pedro_garcia.csv"
+    seed = 1
+    rep = 1
+else
+    modelname = ARGS[1] # modelname = "pedro"
+    feature_file = ARGS[2] # feature_file = "/mnt/data/jsonlearning/experiments/feature_vectors/pedro_garcia.csv"
+    seed = parse(Int, ARGS[3]) # seed = 1
+    rep = parse(Int, ARGS[4]) # rep = 1
+end
+dataset = "garcia"
 
 # load labels file, merge tables and get train/validation/split
 tr_x, tr_l, tr_h, val_x, val_l, val_h, test_x, test_l, test_h = load_split_features(
     dataset, feature_file,
     seed=seed,
-    ratio=ratio
+    ratio=dataset
 )
 const labelnames = sort(unique(tr_l))
 @info "Data loaded."
@@ -24,15 +30,13 @@ const labelnames = sort(unique(tr_l))
 # prepare data for XGBoost
 
 X = collect(tr_x')
-y = encode_labels(tr_l, labelnames)
+y = tr_l .== labelnames[2]
 
 Xval = collect(val_x')
-yval = encode_labels(val_l, labelnames)
+yval = val_l .== labelnames[2]
 
 Xtest = collect(test_x')
-ytest = encode_labels(test_l, labelnames)
-
-num_class = length(labelnames) + 1
+ytest = test_l .== labelnames[2]
 
 # parameters
 using Random
@@ -54,13 +58,12 @@ p = sample_params(rep)
 model = xgboost(
     (X, y), num_round=500,
     max_depth=p.max_depth, eta=p.eta, min_child_weight=p.min_child_weight, subsample=p.subsample,
-    num_class=num_class,
-    objective="multi:softmax"
+    objective="binary:logistic"
 )
 
-ypred = XGBoost.predict(model, Xval)
+ypred = XGBoost.predict(model, Xval) .> 0.5
 av = mean(ypred .== yval)
-ypred = XGBoost.predict(model, Xtest)
+ypred = XGBoost.predict(model, Xtest) .> 0.5
 at = mean(ypred .== ytest)
 println("Val accuracy: $(round(av, digits=4))")
 println("Test accuracy: $(round(at, digits=4))")
@@ -78,16 +81,15 @@ info_dict = Dict(
     :feature_model => modelname,
     :classification_model => "xgboost",
     :seed => seed,
-    :ratio => ratio,
     :model => model
 )
 
 results_dict = merge(par_dict, info_dict)
 
 predictions = vcat(
-    XGBoost.predict(model, X) .|> Int8,
-    XGBoost.predict(model, Xval) .|> Int8,
-    XGBoost.predict(model, Xtest) .|> Int8,
+    (XGBoost.predict(model, X) .> 0.5) .|> Int8,
+    (XGBoost.predict(model, Xval) .> 0.5) .|> Int8,
+    (XGBoost.predict(model, Xtest) .> 0.5) .|> Int8,
 )
 
 # predictions of the model
@@ -117,10 +119,10 @@ There are two files saved for each model: bson file and csv file:
 - csv file contains results: hash, ground truth, predicted labels, split names, and softmax output
 """
 
-using Cuckoo: cuckoo_hash_to_int
-df = cuckoo_hash_to_int(results_df)
+using Cuckoo: garcia_hash_to_int
+df = garcia_hash_to_int(results_df)
 
 @info "Saving results..."
-safesave(expdir("results", "cuckoo_small", modelname, "xgboost", "$id.bson"), results_dict)
-safesave(expdir("results", "cuckoo_small", modelname, "xgboost", "$id.csv"), df)
+safesave(expdir("results", dataset, modelname, "xgboost", "$id.bson"), results_dict)
+safesave(expdir("results", dataset, modelname, "xgboost", "$id.csv"), df)
 @info "Results saved, experiment finished."

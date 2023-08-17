@@ -1,16 +1,17 @@
 # exports
 
-export experiments_path, results_path, splits_path
+export experiments_path, results_path, splits_path, features_path
 export cuckoo_path, cuckoo_full_path, garcia_path
 export benign_path, malicious_path
 
-export expdir, resultsdir, splitsdir
+export expdir, resultsdir, splitsdir, featuredir, featuresdir
 
 # generate the paths for data on the cluster
 
 const experiments_path = "/mnt/data/jsonlearning/experiments"
 const results_path = "/mnt/data/jsonlearning/results"
 const splits_path = "/mnt/data/jsonlearning/splits"
+const features_path = "/mnt/data/jsonlearning/experiments/feature_vectors"
 
 const cuckoo_path = "/mnt/data/jsonlearning/Avast_cuckoo"
 const cuckoo_full_path = "/mnt/data/jsonlearning/Avast_cuckoo_full"
@@ -24,3 +25,5 @@ const malicious_path = "/mnt/data/jsonlearning/garcia/reports/malicious"
 expdir(args...) = joinpath(experiments_path, args...)
 resultsdir(args...) = joinpath(results_path, args...)
 splitsdir(args...) = joinpath(splits_path, args...)
+featuresdir(args...) = joinpath(features_path, args...)
+featuredir(args...) = joinpath(features_path, args...)

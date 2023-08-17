@@ -2,6 +2,10 @@
 .vscode
 .venv
 data
+scripts/pedro/files
 
 # Files to ignore
 plot.png
+*.out
+*.csv
+*.json

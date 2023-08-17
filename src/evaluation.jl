@@ -6,6 +6,7 @@ using PrettyTables
 using Mill, Flux
 using BSON, CSV, DataFrames
 using XGBoost
+using Dates
 
 accuracy(y1::T, y2::T) where T = mean(y1 .== y2)
 
@@ -24,7 +25,7 @@ Loads the results based on the parameters. Does NOT do any aggregation of the re
     - dense_classifier
     - xgboost
 """
-function get_results(dataset::String="cuckoo_small", feature_model::String="hmil", end_model::String="dense_classifier")
+function get_results(dataset::String="cuckoo_small", feature_model::String="hmil", end_model::String="dense_classifier"; crop_date::Union{Date, Nothing}=nothing)
     # get results bson files
     results_dir = expdir("results", dataset, feature_model, end_model) # results directory
     files = readdir(results_dir)
@@ -42,7 +43,21 @@ function get_results(dataset::String="cuckoo_small", feature_model::String="hmil
 
             # load the results and calculate metrics
             c = CSV.read(joinpath(results_dir, "$id.csv"), DataFrame)
-            train_acc, validation_acc, test_acc = _calculate_accuracy(c) # accuracy
+
+            if dataset == "garcia" && feature_model in ["hmil", "hmil_ts"]
+                if "2" in c.predicted
+                    max_value = "2" 
+                else
+                    max_value = "1"
+                end
+                c.predicted = Int64.(map(x -> parse_string3(x, max_value), c.predicted))
+                filter!(:predicted => x -> x < 3, c)
+            end
+            if isnothing(crop_date)
+                train_acc, validation_acc, test_acc = _calculate_accuracy(c) # accuracy
+            else
+                train_acc, validation_acc, test_acc = _calculate_accuracy_date(c, crop_date) # accuracy
+            end
             
             # add accuracy to the dataframe (more metrics can be added if necessary)
             bdf[!, :train_acc] = [train_acc]
@@ -54,7 +69,7 @@ function get_results(dataset::String="cuckoo_small", feature_model::String="hmil
             @warn "File with id $id corrupted, skipping loading..."
         end
     end
-    vcat(R...)
+    vcat(R..., cols=:union)
 end
 
 filtered_columns = ["feature_model", "nn_model", "seed", "uuid", "train_acc", "validation_acc", "test_acc"]
@@ -77,8 +92,8 @@ dataframe with the parameters and final metrics.
 **Kwargs**:
 - `filtered_columns`: filters out the column names that are not used for aggregation (all columns which are not model parameters have to be put inside this array to make the averaging correct)
 """
-function get_combined_results(dataset::String="cuckoo_small", feature_model::String="hmil", end_model::String="dense_classifier"; filtered_columns=filtered_columns, min_seed::Int=5)
-    df = get_results(dataset, feature_model, end_model)
+function get_combined_results(dataset::String="cuckoo_small", feature_model::String="hmil", end_model::String="dense_classifier"; crop_date::Union{Date, Nothing}=nothing, filtered_columns=filtered_columns, min_seed::Int=5)
+    df = get_results(dataset, feature_model, end_model, crop_date=crop_date)
     n = names(df)
     p = n[[all(ni .!= filtered_columns) for ni in n]]
 
@@ -100,6 +115,80 @@ function _calculate_accuracy(df::DataFrame)
         validation = filter(:split => x -> x == "validation", df)
         test = filter(:split => x -> x == "test", df)
     elseif 0 in unique(df.split)
+        train = filter(:split => x -> x == 0, df)
+        validation = filter(:split => x -> x == 1, df)
+        test = filter(:split => x -> x == 2, df)
+    end
+
+    train_acc = accuracy(train.ground_truth, train.predicted)
+    validation_acc = accuracy(validation.ground_truth, validation.predicted)
+    test_acc = accuracy(test.ground_truth, test.predicted)
+
+    return train_acc, validation_acc, test_acc
+end
+
+"""
+    _calculate_accuracy_date(df::DataFrame, crop_date::Date=Date(2019,1,1))
+
+Uses the column `split` to calculate accuracy on train / validation / test splits based on columns
+`ground_truth` and `predicted`. Returns the 3-tuple of accuracy values. Crops data such that only
+samples with `date > crop_date` are left for calculation of accuracies.
+"""
+function _calculate_accuracy_date(df::DataFrame, crop_date::Date=Date(2019,1,1))
+    # load data and split into train/validation/test
+    d = Dataset("cuckoo_small")
+    hash = map(x -> split(split(x, '/')[end], '.')[1], d.samples)
+    dates = d.date
+
+    date_df = DataFrame(:hash => hash, :date => dates, :path => d.samples)
+    sort!(date_df, :date)
+
+    if "int_hash" in names(df)
+        df = cuckoo_int_to_hash(df)
+    end
+
+    r = innerjoin(date_df, df, on=:hash)
+    filter!(:date => x -> x > crop_date, r)
+    df = r
+
+    if "train" in unique(r.split)
+        train = filter(:split => x -> x == "train", df)
+        validation = filter(:split => x -> x == "validation", df)
+        test = filter(:split => x -> x == "test", df)
+    elseif 0 in unique(df.split)
+        train = filter(:split => x -> x == 0, df)
+        validation = filter(:split => x -> x == 1, df)
+        test = filter(:split => x -> x == 2, df)
+    end
+
+    train_acc = accuracy(train.ground_truth, train.predicted)
+    validation_acc = accuracy(validation.ground_truth, validation.predicted)
+    test_acc = accuracy(test.ground_truth, test.predicted)
+
+    return train_acc, validation_acc, test_acc
+end
+function _calculate_accuracy_date(df::DataFrame, date_df::DataFrame, crop_date::Date=Date(2019,1,1); crop::String="between", second_crop_date::Date=Date(2019,2,1))
+    # if date_df already provided
+
+    if "int_hash" in names(df)
+        df = cuckoo_int_to_hash(df)
+    end
+
+    r = innerjoin(date_df, df, on=:hash)
+    if crop == "after"
+        filter!(:date => x -> x > crop_date, r)
+    elseif crop == "before"
+        filter!(:date => x -> x < crop_date, r)
+    elseif crop == "between"
+        filter!(:date => x -> crop_date < x < second_crop_date, r)
+    end
+    df = r
+
+    if any(x -> x in unique(r.split), ["train", "validation", "test"])
+        train = filter(:split => x -> x == "train", df)
+        validation = filter(:split => x -> x == "validation", df)
+        test = filter(:split => x -> x == "test", df)
+    elseif any(x -> x in unique(r.split), [0,1,2])
         train = filter(:split => x -> x == 0, df)
         validation = filter(:split => x -> x == 1, df)
         test = filter(:split => x -> x == 2, df)
@@ -213,3 +302,23 @@ end
 #     end
 #     return tr_g
 # end
+
+function parse_string3(x, max_value = "1")
+    if max_value == "2"
+        if ismissing(x) || x == "NA"
+            return 3
+        elseif x == "1"
+            return 1
+        elseif x == "2"
+            return 2
+        end
+    else
+        if ismissing(x) || x == "NA"
+            return 3
+        elseif x == "0"
+            return 1
+        elseif x == "1"
+            return 2
+        end
+    end
+end

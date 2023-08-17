@@ -7,11 +7,11 @@ using DataFrames
 
 # get the passed arguments
 modelname = ARGS[1] # modelname = "pedro"
-feature_file = ARGS[2] # feature_file = "/mnt/data/jsonlearning/experiments/feature_vectors/pedro.csv"
+feature_file = ARGS[2] # feature_file = featuredir("pedro_garcia.csv")
 seed = parse(Int, ARGS[3]) # seed = 1
 rep = parse(Int, ARGS[4]) # rep = 1
-ratio = "timesplit"
-dataset = "cuckoo"
+ratio = "garcia"
+dataset = "garcia"
 
 # load labels file, merge tables and get train/validation/split
 tr_x, tr_l, tr_h, val_x, val_l, val_h, test_x, test_l, test_h = load_split_features(
@@ -40,7 +40,7 @@ end
 
 # initialize the parameters
 idim = size(tr_x, 1)
-odim = 10
+odim = 1
 p = sample_params(rep)
 
 # create a neural network classifier
@@ -48,7 +48,7 @@ model = dense_classifier_constructor(idim, odim; p...)
 @info "Model created."
 
 # initialize loss, optimizer, model parameters
-loss(x, y) = Flux.logitcrossentropy(model(x), y)
+loss(x, y) = Flux.logitbinarycrossentropy(model(x), y)
 opt = ADAM(1e-4)
 ps = Flux.params(model)
 
@@ -56,22 +56,23 @@ ps = Flux.params(model)
 using Cuckoo: transform_data
 tr_x_norm, val_x_norm, test_x_norm = transform_data(tr_x, val_x, test_x, type=p.transformation)
 tr_x_norm, val_x_norm, test_x_norm = Float32.(tr_x_norm), Float32.(val_x_norm), Float32.(test_x_norm)
-tr_y = Flux.onehotbatch(tr_l, labelnames)
-val_y = Flux.onehotbatch(val_l, labelnames)
-train_data = Flux.Data.DataLoader((tr_x_norm, tr_y), batchsize=p.batchsize)
+tr_y = tr_l .== labelnames[2]
+val_y = val_l .== labelnames[2]
+test_y = test_l .== labelnames[2]
+train_data = Flux.Data.DataLoader((tr_x_norm, tr_y'), batchsize=p.batchsize)
 
 # Model training
-max_train_time = 60*15 # 15 minutes training time, no early stopping for now
 Flux.trainmode!(model)
+max_train_time = 60*15 # 15 minutes training time, no early stopping for now
 
 @info "Starting training."
 start_time = time()
 while time() - start_time < max_train_time
     Flux.train!(loss, ps, train_data, opt)
 
-    train_acc = mean(Flux.onecold(model(tr_x_norm), labelnames) .== tr_l)
-    val_acc = mean(Flux.onecold(model(val_x_norm), labelnames) .== val_l)
-    test_acc = mean(Flux.onecold(model(test_x_norm), labelnames) .== test_l)
+    train_acc = mean((sigmoid(model(tr_x_norm)) .> 0.5)' .== tr_y)
+    val_acc = mean((sigmoid(model(val_x_norm)) .> 0.5)' .== val_y)
+    test_acc = mean((sigmoid(model(test_x_norm)) .> 0.5)' .== test_y)
 
     @info "Train accuracy = $(round(train_acc, digits=3))"
     @info "Validation accuracy = $(round(val_acc, digits=3))"
@@ -94,16 +95,15 @@ info_dict = Dict(
     :classification_model => "dense_classifier",
     :seed => seed,
     :repetition => rep,
-    :ratio => ratio,
     :model => model
 )
 
 results_dict = merge(par_dict, info_dict)
 
 predictions = vcat(
-    encode_labels(Flux.onecold(model(tr_x_norm), labelnames), labelnames),
-    encode_labels(Flux.onecold(model(val_x_norm), labelnames), labelnames),
-    encode_labels(Flux.onecold(model(test_x_norm), labelnames), labelnames)
+    encode_labels(map(x -> labelnames[Int(x) + 1], (sigmoid(model(tr_x_norm)) .> 0.5)'), labelnames),
+    encode_labels(map(x -> labelnames[Int(x) + 1], (sigmoid(model(val_x_norm)) .> 0.5)'), labelnames),
+    encode_labels(map(x -> labelnames[Int(x) + 1], (sigmoid(model(test_x_norm)) .> 0.5)'), labelnames)
 )
 
 # predictions of the model
@@ -145,10 +145,10 @@ There are two files saved for each model: bson file and csv file:
 - csv file contains results: hash, ground truth, predicted labels, split names, and softmax output
 """
 
-using Cuckoo: cuckoo_hash_to_int
-df = cuckoo_hash_to_int(results_df)
+using Cuckoo: garcia_hash_to_int
+df = garcia_hash_to_int(results_df)
 
 @info "Saving results..."
-safesave(expdir("results", modelname, "dense_classifier", "$id.bson"), results_dict)
-safesave(expdir("results", modelname, "dense_classifier", "$id.csv"), df)
+safesave(expdir("results", dataset, modelname, "dense_classifier", "$id.bson"), results_dict)
+safesave(expdir("results", dataset, modelname, "dense_classifier", "$id.csv"), df)
 @info "Results saved, experiment finished."
