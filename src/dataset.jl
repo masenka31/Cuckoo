@@ -45,7 +45,7 @@ end
 Base.length(d::Dataset) = length(d.samples)
 
 function Dataset(data::String="cuckoo_small"; full=false)
-    if data in ["cuckoo_small", "cuckoo_full"]
+    if data in ["cuckoo_small", "cuckoo_full", "cuckoo"]
         if full
             df = CSV.read("$cuckoo_full_path/public_labels.csv", DataFrame)
             sch = BSON.load(datadir("schema_full.bson"))[:schema]
@@ -69,7 +69,8 @@ function Dataset(data::String="cuckoo_small"; full=false)
         df = CSV.read("/mnt/data/jsonlearning/datasets/garcia/meta.csv", DataFrame)
         files = map(x -> joinpath(garcia_path, x[1:2], x*".json"), df.sha256)
         sch = [] # not loading any schema, just saved extractor
-        extractor = BSON.load(datadir("garcia_extractor.bson"))[:extractor]
+        # extractor = BSON.load(datadir("garcia_extractor.bson"))[:extractor]
+        extractor = BSON.load(datadir("garcia_extractor_wo_timestamp.bson"))[:extractor]
         family = String.(df.severity)
         type = nothing
         date = nothing

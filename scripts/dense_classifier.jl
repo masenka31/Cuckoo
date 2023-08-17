@@ -7,8 +7,7 @@ using DataFrames
 
 # get the passed arguments
 modelname = ARGS[1] # modelname = "pedro"
-feature_file = ARGS[2] # feature_file = "/mnt/data/jsonlearning/experiments_old/cuckoo_small/combined.csv"
-# feature_file = "/home/maskomic/projects/Cuckoo/scripts/pedro/input_0_3.csv"
+feature_file = ARGS[2] # feature_file = "/mnt/data/jsonlearning/experiments/feature_vectors/pedro.csv"
 seed = parse(Int, ARGS[3]) # seed = 1
 rep = parse(Int, ARGS[4]) # rep = 1
 ratio = "timesplit"
@@ -33,25 +32,19 @@ function sample_params(seed)
     nlayers = sample(2:4)
     batchsize = sample([32,64,128,256])
     transformation = sample(["none", "log", "minmax", "standard"])
+    dropout_p = sample([0, 0.1, 0.2, 0.3])
 
     Random.seed!()
-    return (hdim=hdim, activation=activation, nlayers=nlayers, batchsize=batchsize, transformation=transformation)
+    return (hdim=hdim, activation=activation, nlayers=nlayers, batchsize=batchsize, transformation=transformation, dropout_p=dropout_p)
 end
 
 # initialize the parameters
 idim = size(tr_x, 1)
 odim = 10
 p = sample_params(rep)
-act = eval(Symbol(p.activation))
 
 # create a neural network classifier
-if p.nlayers == 2
-    model = Chain(Dense(idim, p.hdim, act), Dense(p.hdim, odim))
-elseif p.nlayers == 3
-    model = Chain(Dense(idim, p.hdim, act), Dense(p.hdim, p.hdim, act), Dense(p.hdim, odim))
-else
-    model = Chain(Dense(idim, p.hdim, act), Dense(p.hdim, p.hdim, act), Dense(p.hdim, p.hdim, act), Dense(p.hdim, odim))
-end
+model = dense_classifier_constructor(idim, odim; p...)
 @info "Model created."
 
 # initialize loss, optimizer, model parameters
@@ -69,6 +62,7 @@ train_data = Flux.Data.DataLoader((tr_x_norm, tr_y), batchsize=p.batchsize)
 
 # Model training
 max_train_time = 60*15 # 15 minutes training time, no early stopping for now
+Flux.trainmode!(model)
 
 @info "Starting training."
 start_time = time()
@@ -87,6 +81,8 @@ end
 ######################
 ### Saving results ###
 ######################
+
+Flux.testmode!(model)
 
 using UUIDs
 id = "$(uuid1())"   # generate unique uuid to save data in two files - one contains metadata, the other contains the predictions
@@ -154,6 +150,5 @@ df = cuckoo_hash_to_int(results_df)
 
 @info "Saving results..."
 safesave(expdir("results", modelname, "dense_classifier", "$id.bson"), results_dict)
-# safesave(expdir("results", modelname, "dense_classifier", "$id.csv"), results_df)
 safesave(expdir("results", modelname, "dense_classifier", "$id.csv"), df)
 @info "Results saved, experiment finished."
